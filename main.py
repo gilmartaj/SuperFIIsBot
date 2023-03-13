@@ -34,6 +34,7 @@ def handle_command(message):
         ticker = message.text.split()[1].strip()
         enviada = bot.send_message(message.chat.id, "Buscando...", reply_to_message_id=message.id)
         valor = get_ticker_value(ticker)
+        print(valor)
         bot.delete_message(message.chat.id, enviada.id)
         bot.send_message(message.chat.id, f"R$ {valor:.2f}".replace(".",","), reply_to_message_id=message.id)
     except:
