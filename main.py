@@ -21,7 +21,7 @@ import datetime
 
 import xmltodict
 
-client = gspread.service_account(filename='/home/gilmartaj/SuperFIIs/superfiisbot-9f67df851d9a.json')
+client = gspread.service_account(filename='superfiisbot-9f67df851d9a.json')
 
 sheet = client.open("Teste").sheet1
 
