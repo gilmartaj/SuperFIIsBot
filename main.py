@@ -40,7 +40,7 @@ comandos = [
     ("teste", "Teste"),
     ]
 
-fiis_cnpj = pd.read_csv("/home/gilmartaj/SuperFIIs/fiis_cnpj.csv", dtype={"Código":str, "CNPJ":str}).dropna()
+fiis_cnpj = pd.read_csv("fiis_cnpj.csv", dtype={"Código":str, "CNPJ":str}).dropna()
 
 bot = telebot.TeleBot("5747986812:AAG7f__d2EsGA-OcjV3_dquK7pA7KIqb-so")    
 
