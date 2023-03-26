@@ -1,3 +1,16 @@
 beautifulsoup4==4.9.3
+google-auth==1.35.0
+google-auth-oauthlib==0.4.6
+google-pasta==0.2.0
+gspread==5.7.2
+numpy==1.19.5
+oauth==1.0.1
+oauth2client==4.1.3
+oauthlib==3.2.0
+pandas==1.1.5
+pandas-datareader==0.10.0
 pyTelegramBotAPI==4.2.0
 requests==2.27.1
+Telethon==1.24.0
+telethon-tgcrypto==0.0.3
+xmltodict==0.13.0
