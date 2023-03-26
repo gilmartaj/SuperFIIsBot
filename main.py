@@ -21,6 +21,10 @@ import datetime
 
 import xmltodict
 
+import time
+
+from bs4 import BeautifulSoup
+
 client = gspread.service_account(filename='superfiisbot-9f67df851d9a.json')
 
 sheet = client.open("Teste").sheet1
@@ -376,6 +380,42 @@ def handle_command(message):
         for f in fs:
             resposta += "\n"+f
         bot.send_message(message.chat.id, resposta, reply_to_message_id=message.id)
+       
+       
+def get_ticker_value(ticker):
+    headers = {'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:108.0) Gecko/20100101 Firefox/108.0'} 
+    url = f'https://www.google.com/search?q={ticker}'
+    try:
+        res = requests.get(url, headers=headers)
+        html_page = res.text
+        
+        if "BVMF:"+ticker.upper() not in html_page:
+            raise Exception("Não encontrado")
+
+        
+        soup = BeautifulSoup(html_page, 'html.parser')
+
+        #print(soup.find_all('span'))
+
+        valor = float(soup.find_all('span', {"class":'IsqQVc NprOob wT3VGc'})[0].text.replace(",","."))
+    except:
+        time.sleep(2)
+        res = requests.get(url, headers=headers)
+        html_page = res.text
+        
+        if "BVMF:"+ticker.upper() not in html_page:
+            raise Exception("Não encontrado")
+
+        
+        soup = BeautifulSoup(html_page, 'html.parser')
+
+        #print(soup.find_all('span'))
+
+        valor = float(soup.find_all('span', {"class":'IsqQVc NprOob wT3VGc'})[0].text.replace(",","."))
+        
+    return valor
+
+       
         
 @bot.message_handler(regexp=r"(\s)*/cotacao.* [A-Za-z]{4}11")
 def handle_command(message):
