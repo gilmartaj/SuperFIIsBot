@@ -184,7 +184,7 @@ def buscar_documentos(cnpj, desde=""):
     lista = []
     for d in r.json()["data"]:
         de = d["dataEntrega"]
-        print(datetime.datetime(year=int(de[6:10]), month=int(de[3:5]), day=int(de[0:2]), hour=int(de[11:13])), desde)
+        #print(datetime.datetime(year=int(de[6:10]), month=int(de[3:5]), day=int(de[0:2]), hour=int(de[11:13])), desde)
         if datetime.datetime(year=int(de[6:10]), month=int(de[3:5]), day=int(de[0:2]), hour=int(de[11:13]), minute=int(de[14:16]), tzinfo=tz_info) < desde:
             break
         if d["status"] == "AC":
@@ -481,7 +481,7 @@ def verificar():
     for f in base.colunas():
         seguidores = base.buscar_seguidores(f)
         if len(seguidores) > 0:
-            print(f, len(seguidores))
+            #print(f, len(seguidores))
             h = ultima_busca[f]
             ultima_busca[f] = agora()
             documentos = buscar_documentos(buscar_cnpj(f), h)
@@ -514,10 +514,10 @@ def exec_ver(parada):
     verificar()
         
 def verificacao_periodica():
-    h = agora()
-    exec_ver(datetime.datetime(h.year, h.month, h.day, 22, 30, tzinfo=tz_info))
+    #h = agora()
+    #exec_ver(datetime.datetime(h.year, h.month, h.day, 22, 30, tzinfo=tz_info))
 
-    while 1:
+    while True:
         h = agora()
         
         """parada = agora() + datetime.timedelta(seconds = 5)
@@ -529,74 +529,29 @@ def verificacao_periodica():
         verificar()"""
         """if h.hour > datetime.datetime(h.year, h.month, h.day, 21, 30, tzinfo=tz_info) or h.hour < datetime.datetime(h.year, h.month, h.day, 9, 30, tzinfo=tz_info):"""
         #if h.hour > datetime.datetime(h.year, h.month, h.day, 21, 30, tzinfo=tz_info):
-        h += datetime.timedelta(days=1) 
-        parada = datetime.datetime(h.year, h.month, h.day, 9, 30, tzinfo=tz_info)
-        espera = parada - agora()
-        print(espera.total_seconds())
-        time.sleep(espera.total_seconds())
-        verificar()
+        h += datetime.timedelta(days=1)
         
+        exec_ver(datetime.datetime(h.year, h.month, h.day, 6, 0, tzinfo=tz_info))
         h = agora()
-        parada = datetime.datetime(h.year, h.month, h.day, 10, 30, tzinfo=tz_info)
-        espera = parada - agora()
-        print(espera.total_seconds())
-        time.sleep(espera.total_seconds())
-        verificar()
+        exec_ver(datetime.datetime(h.year, h.month, h.day, 9, 30, tzinfo=tz_info))
+        exec_ver(datetime.datetime(h.year, h.month, h.day, 10, 30, tzinfo=tz_info))
+        exec_ver(datetime.datetime(h.year, h.month, h.day, 12, 30, tzinfo=tz_info))
+        exec_ver(datetime.datetime(h.year, h.month, h.day, 15, 0, tzinfo=tz_info))
+        exec_ver(datetime.datetime(h.year, h.month, h.day, 16, 30, tzinfo=tz_info))
+        exec_ver(datetime.datetime(h.year, h.month, h.day, 17, 35, tzinfo=tz_info))
+        exec_ver(datetime.datetime(h.year, h.month, h.day, 17, 55, tzinfo=tz_info))
+        exec_ver(datetime.datetime(h.year, h.month, h.day, 18, 30, tzinfo=tz_info))
+        exec_ver(datetime.datetime(h.year, h.month, h.day, 20, 0, tzinfo=tz_info))
+        exec_ver(datetime.datetime(h.year, h.month, h.day, 21, 30, tzinfo=tz_info))
+        #h = agora()
         
-        parada = datetime.datetime(h.year, h.month, h.day, 12, 30, tzinfo=tz_info)
-        espera = parada - agora()
-        print(espera.total_seconds())
-        time.sleep(espera.total_seconds())
-        verificar()
-        
-        parada = datetime.datetime(h.year, h.month, h.day, 15, 0, tzinfo=tz_info)
-        espera = parada - agora()
-        print(espera.total_seconds())
-        time.sleep(espera.total_seconds())
-        verificar()
-        
-        parada = datetime.datetime(h.year, h.month, h.day, 16, 30, tzinfo=tz_info)
-        espera = parada - agora()
-        print(espera.total_seconds())
-        time.sleep(espera.total_seconds())
-        verificar()
-        
-        parada = datetime.datetime(h.year, h.month, h.day, 17, 35, tzinfo=tz_info)
-        espera = parada - agora()
-        print(espera.total_seconds())
-        time.sleep(espera.total_seconds())
-        verificar()
-        
-        parada = datetime.datetime(h.year, h.month, h.day, 17, 55, tzinfo=tz_info)
-        espera = parada - agora()
-        print(espera.total_seconds())
-        time.sleep(espera.total_seconds())
-        verificar()
-        
-        parada = datetime.datetime(h.year, h.month, h.day, 18, 30, tzinfo=tz_info)
-        espera = parada - agora()
-        print(espera.total_seconds())
-        time.sleep(espera.total_seconds())
-        verificar()
-        
-        parada = datetime.datetime(h.year, h.month, h.day, 20, 0, tzinfo=tz_info)
-        espera = parada - agora()
-        print(espera.total_seconds())
-        time.sleep(espera.total_seconds())
-        verificar()
-        
-        parada = datetime.datetime(h.year, h.month, h.day, 21, 30, tzinfo=tz_info)
-        espera = parada - agora()
-        print(espera.total_seconds())
-        time.sleep(espera.total_seconds())
-        verificar()
         
         
 tz_info = agora().tzinfo
       
 ultima_busca = {}
 for f in base.colunas():
-    ultima_busca[f] = agora()# - datetime.timedelta(days=7)
+    ultima_busca[f] = agora() - datetime.timedelta(days=7)
        
 print("Robô iniciado.")
 #print(fiis_cnpj)
