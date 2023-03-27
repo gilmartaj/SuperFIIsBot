@@ -563,7 +563,7 @@ tz_info = agora().tzinfo
       
 ultima_busca = {}
 for f in base.colunas():
-    ultima_busca[f] = agora() - datetime.timedelta(days=7)
+    ultima_busca[f] = agora()
        
 print("Robô iniciado.")
 #print(fiis_cnpj)
