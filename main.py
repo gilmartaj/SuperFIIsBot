@@ -48,7 +48,7 @@ comandos = [
     ("fundos_seguidos", "Lista todos os fundos imobiliários que você segue."),
     ("seguir", 'Use para receber todos os documentos e informações de rendimentos de um FII. Ex.: "/seguir URPR11"'), 
     ("ultimos_documentos", 'Receba os documentos emitidos pelo fundo nos últimos 30 dias. Ex.: "/ultimos_documentos URPR11"'),
-    ("teste", "Teste"),
+    #("teste", "Teste"),
     ]
 
 fiis_cnpj = pd.read_csv("fiis_cnpj.csv", dtype={"Código":str, "CNPJ":str}).dropna()
