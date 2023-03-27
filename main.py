@@ -25,6 +25,8 @@ import time
 
 from bs4 import BeautifulSoup
 
+import pytz
+
 client = gspread.service_account(filename='superfiisbot-9f67df851d9a.json')
 
 sheet = client.open("Teste").sheet1
@@ -34,13 +36,18 @@ telebot.apihelper.SESSION_TIME_TO_LIVE = 60 * 15
 
 bot = telebot.TeleBot("5747986812:AAG7f__d2EsGA-OcjV3_dquK7pA7KIqb-so")
 
+
+
 comandos = [
     ("start", "Iniciar"),
-    ("cotacao", "Mostra a cotação de um fundo imobiliário. Ex.: /cotacao URPR11"),
-    ("seguir", "Use para receber todos os documentos e informações de rendimentos de um FII. Ex.: /seguir URPR11"),
-    ("desinscrever", "Use para deixar de um FII que você segue. Ex.: /desinscrever URPR11"),
+    ("ajuda", "Exibe a mensagem de ajuda."),
+    ("contato", "Exibe informações para contato."),
+    ("cotacao", 'Mostra a cotação de um fundo imobiliário. Ex.: "/cotacao URPR11"'),
+    ("desinscrever", 'Use para deixar de seguir um FII que você segue. Ex.: "/desinscrever URPR11"'),
+    ("doacao", "Ajude a manter o projeto vivo doando a partir de 1 centavo. Chave Pix: gil77891@gmail.com"),
     ("fundos_seguidos", "Lista todos os fundos imobiliários que você segue."),
-    ("ultimos_documentos", "Receba os documentos emitidos pelo fundos nos últimos 30 dias. Ex.: /ultimos_documentos URPR11"),
+    ("seguir", 'Use para receber todos os documentos e informações de rendimentos de um FII. Ex.: "/seguir URPR11"'), 
+    ("ultimos_documentos", 'Receba os documentos emitidos pelo fundo nos últimos 30 dias. Ex.: "/ultimos_documentos URPR11"'),
     ("teste", "Teste"),
     ]
 
@@ -96,7 +103,13 @@ class BaseCache:
         for f in sorted(self.planilha.keys()):
             if usuario in self.planilha[f]:
                 seguidos.append(f)
-        return seguidos
+        return sorted(seguidos)
+        
+    def buscar_seguidores(self, fii):
+            return list(filter(lambda s: s != "", self.planilha[fii]))
+            
+    def colunas(self):
+        return sorted(self.planilha.keys())
 
 base = BaseCache(sheet)
 
@@ -172,7 +185,7 @@ def buscar_documentos(cnpj, desde=""):
     for d in r.json()["data"]:
         de = d["dataEntrega"]
         print(datetime.datetime(year=int(de[6:10]), month=int(de[3:5]), day=int(de[0:2]), hour=int(de[11:13])), desde)
-        if datetime.datetime(year=int(de[6:10]), month=int(de[3:5]), day=int(de[0:2]), hour=int(de[11:13]), minute=int(de[14:16])) < desde:
+        if datetime.datetime(year=int(de[6:10]), month=int(de[3:5]), day=int(de[0:2]), hour=int(de[11:13]), minute=int(de[14:16]), tzinfo=tz_info) < desde:
             break
         if d["status"] == "AC":
             lista.append(d)
@@ -334,7 +347,8 @@ def handle_command(message):
 @bot.message_handler(commands=["ultimos_documentos"])
 def handle_command(message):
 
-    print(message)
+    #print(message)
+    print(message.from_user.first_name, message.text)
 
     ticker = message.text.split()[1].strip().upper()
     documentos = buscar_documentos2(buscar_cnpj(ticker), datetime.datetime.now() - datetime.timedelta(days=30))
@@ -347,7 +361,8 @@ def handle_command(message):
 
 @bot.message_handler(commands=["seguir"])
 def handle_command(message):
-    print(message)
+    #print(message)
+    print(message.from_user.first_name, message.text)
     ticker = message.text.split()[1].strip().upper()
     r = base.inserir(ticker, str(message.from_user.id))
     if r == 0:
@@ -359,7 +374,8 @@ def handle_command(message):
         
 @bot.message_handler(commands=["desinscrever"])
 def handle_command(message):
-    print(message)
+    #print(message)
+    print(message.from_user.first_name, message.text)
     ticker = message.text.split()[1].strip().upper()
     r = base.remover(ticker, str(message.from_user.id))
     if r == 0:
@@ -371,7 +387,8 @@ def handle_command(message):
         
 @bot.message_handler(commands=["fundos_seguidos"])
 def handle_command(message):
-    print(message)
+    #print(message)
+    print(message.from_user.first_name, message.text)
     fs = base.buscar_seguidos(str(message.from_user.id))
     if len(fs) == 0:
         bot.send_message(message.chat.id, f"Você ainda não está seguindo nenhum fundo imobiliário. Para começar, utilize o comando /seguir", reply_to_message_id=message.id)
@@ -429,15 +446,162 @@ def handle_command(message):
     except:
         bot.send_message(message.chat.id, 'Ocorreu um erro, tente novamente.')
 
+def mensagem_instrucoes():
+    msg = ""
+    for comando, descricao in comandos:
+        msg += f"/{comando}: {descricao}\n"
+    return msg
+
 @bot.message_handler(commands=["start"])
 def handle_command(message):
+    #print(message)
+    print(message.from_user.first_name, message.text)
+    bot.send_message(message.from_user.id, "Seja bem-vindo ao @SuperFIIsBot!!!\n\n")
+    bot.send_message(message.from_user.id, "Segue a lista de comandos disponíveis e suas respectivas descrições:\n\n"+mensagem_instrucoes())
+    bot.send_message(message.from_user.id, "Em caso de dúvidas ou sugestões, entre em contato diretamente com o desenvolvedor @gilmartaj, ficaremos felizes em ajudar!")
+    
+@bot.message_handler(commands=["ajuda"])
+def handle_command(message):
+    #print(message)
+    print(message.from_user.first_name, message.text)
+    bot.send_message(message.from_user.id, "Segue a lista de comandos disponíveis e suas respectivas descrições:\n\n"+mensagem_instrucoes()+"\nEm caso de dúvidas ou sugestões, entre em contato diretamente com o desenvolvedor @gilmartaj", reply_to_message_id=message.id)
+    
+@bot.message_handler(commands=["doacao"])
+def handle_command(message):
     print(message)
-    bot.send_message(message.from_user.id, "Pronto", reply_to_message_id=message.id) 
+    bot.send_message(message.from_user.id, "Além do tempo de desenvolvimento, manter o bot rodando exige um servidor, e isso tem um custo. Se o bot é útil para você e não lhe fazem falta alguns centavos, ajude o projeto doando a partir de 1 centavo para a Chave Pix de e-mail do desenvolvedor: gil77891@gmail.com\n\nObs.: Não use este e-mail para contato, isto pode ser feito aqui mesmo pelo Telegram, enviando uma mensagem para @gilmartaj.")
+    
+@bot.message_handler(commands=["contato"])
+def handle_command(message):
+    print(message)
+    bot.send_message(message.from_user.id, "Para dúvidas, sugestões e reportes de erros, envie uma mensagem direta para o desenvolvedor @gilmartaj, aqui mesmo pelo Telegram.")
+
+
+def verificar():
+    for f in base.colunas():
+        seguidores = base.buscar_seguidores(f)
+        if len(seguidores) > 0:
+            print(f, len(seguidores))
+            h = ultima_busca[f]
+            ultima_busca[f] = agora()
+            documentos = buscar_documentos(buscar_cnpj(f), h)
+            
+            if len(documentos) == 0:
+                for seg in seguidores:
+                    seg = int(seg)
+                    bot.send_message(seg, f + " - Nenhum documento")
+            
+            for doc in documentos:
+                print(f, "-", doc["tipoDocumento"])
+                
+                doc["codigoFII"] = f
+                for seg in seguidores:
+                    seg = int(seg)
+                    env(doc, seg)
+                if doc["tipoDocumento"] == "Rendimentos e Amortizações":
+                    for seg in seguidores:
+                        seg = int(seg)
+                        informar_proventos(doc, seg)
+            
+def agora():
+    #return datetime.datetime.utcnow().astimezone(pytz.timezone("America/Bahia"))
+    return datetime.datetime.now(tz=pytz.timezone("America/Bahia"))
+    
+def exec_ver(parada):
+    espera = parada - agora()
+    print(espera.total_seconds())
+    time.sleep(espera.total_seconds())
+    verificar()
         
+def verificacao_periodica():
+    h = agora()
+    exec_ver(datetime.datetime(h.year, h.month, h.day, 22, 30, tzinfo=tz_info))
+
+    while 1:
+        h = agora()
+        
+        """parada = agora() + datetime.timedelta(seconds = 5)
+        #parada = datetime.datetime(h.year, h.month, h.day, 20, 58, tzinfo=h.tzinfo)
+        print(h, parada)
+        espera = parada - h
+        print(espera.total_seconds())
+        time.sleep(espera.total_seconds())
+        verificar()"""
+        """if h.hour > datetime.datetime(h.year, h.month, h.day, 21, 30, tzinfo=tz_info) or h.hour < datetime.datetime(h.year, h.month, h.day, 9, 30, tzinfo=tz_info):"""
+        #if h.hour > datetime.datetime(h.year, h.month, h.day, 21, 30, tzinfo=tz_info):
+        h += datetime.timedelta(days=1) 
+        parada = datetime.datetime(h.year, h.month, h.day, 9, 30, tzinfo=tz_info)
+        espera = parada - agora()
+        print(espera.total_seconds())
+        time.sleep(espera.total_seconds())
+        verificar()
+        
+        h = agora()
+        parada = datetime.datetime(h.year, h.month, h.day, 10, 30, tzinfo=tz_info)
+        espera = parada - agora()
+        print(espera.total_seconds())
+        time.sleep(espera.total_seconds())
+        verificar()
+        
+        parada = datetime.datetime(h.year, h.month, h.day, 12, 30, tzinfo=tz_info)
+        espera = parada - agora()
+        print(espera.total_seconds())
+        time.sleep(espera.total_seconds())
+        verificar()
+        
+        parada = datetime.datetime(h.year, h.month, h.day, 15, 0, tzinfo=tz_info)
+        espera = parada - agora()
+        print(espera.total_seconds())
+        time.sleep(espera.total_seconds())
+        verificar()
+        
+        parada = datetime.datetime(h.year, h.month, h.day, 16, 30, tzinfo=tz_info)
+        espera = parada - agora()
+        print(espera.total_seconds())
+        time.sleep(espera.total_seconds())
+        verificar()
+        
+        parada = datetime.datetime(h.year, h.month, h.day, 17, 35, tzinfo=tz_info)
+        espera = parada - agora()
+        print(espera.total_seconds())
+        time.sleep(espera.total_seconds())
+        verificar()
+        
+        parada = datetime.datetime(h.year, h.month, h.day, 17, 55, tzinfo=tz_info)
+        espera = parada - agora()
+        print(espera.total_seconds())
+        time.sleep(espera.total_seconds())
+        verificar()
+        
+        parada = datetime.datetime(h.year, h.month, h.day, 18, 30, tzinfo=tz_info)
+        espera = parada - agora()
+        print(espera.total_seconds())
+        time.sleep(espera.total_seconds())
+        verificar()
+        
+        parada = datetime.datetime(h.year, h.month, h.day, 20, 0, tzinfo=tz_info)
+        espera = parada - agora()
+        print(espera.total_seconds())
+        time.sleep(espera.total_seconds())
+        verificar()
+        
+        parada = datetime.datetime(h.year, h.month, h.day, 21, 30, tzinfo=tz_info)
+        espera = parada - agora()
+        print(espera.total_seconds())
+        time.sleep(espera.total_seconds())
+        verificar()
+        
+        
+tz_info = agora().tzinfo
+      
+ultima_busca = {}
+for f in base.colunas():
+    ultima_busca[f] = agora()# - datetime.timedelta(days=7)
+       
 print("Robô iniciado.")
 #print(fiis_cnpj)
 
-#Thread(target=env, daemon=True).start()
+Thread(target=verificacao_periodica, daemon=True).start()
 bot.set_my_commands([telebot.types.BotCommand(comando[0], comando[1]) for comando in comandos])
 
 bot.infinity_polling(timeout=200, long_polling_timeout = 5)
