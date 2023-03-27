@@ -29,7 +29,7 @@ import pytz
 
 client = gspread.service_account(filename='superfiisbot-9f67df851d9a.json')
 
-sheet = client.open("Teste").sheet1
+sheet = client.open("SeguidoresFIIs").sheet1
 
 telebot.apihelper.SESSION_TIME_TO_LIVE = 60 * 15
 
@@ -211,7 +211,7 @@ def baixarDocumento(link):
   
   
 def env(doc, usuario):
-        if doc["categoriaDocumento"] in ("Informes Periódicos", "Aviso aos Cotistas - Estruturado") and doc["tipoDocumento"] != "Demonstrações Financeiras" or "Estruturado" in doc["tipoDocumento"]:
+        if doc["categoriaDocumento"] in ("Informes Periódicos", "Aviso aos Cotistas - Estruturado") and doc["tipoDocumento"] != "Demonstrações Financeiras" or "Estruturado" in doc["tipoDocumento"] or "Formulário de Liberação para Negociação das Cotas" in doc["tipoDocumento"]:
             data_ref = re.search(r"\d\d/\d\d\d\d", doc["dataReferencia"])
             data_ref = "("+data_ref.group()+")" if data_ref else doc["dataReferencia"].replace("/", "-").replace(":", "-")
             bot.send_document(
@@ -484,34 +484,43 @@ def verificar():
             #print(f, len(seguidores))
             h = ultima_busca[f]
             ultima_busca[f] = agora()
-            documentos = buscar_documentos(buscar_cnpj(f), h)
+            documentos = []
+            try:
+                documentos = buscar_documentos(buscar_cnpj(f), h)
+            except:
+                pass
             
             if len(documentos) == 0:
                 for seg in seguidores:
                     seg = int(seg)
-                    bot.send_message(seg, f + " - Nenhum documento")
+                    #bot.send_message(seg, f + " - Nenhum documento")
             
             for doc in documentos:
                 print(f, "-", doc["tipoDocumento"])
                 
                 doc["codigoFII"] = f
-                for seg in seguidores:
-                    seg = int(seg)
-                    env(doc, seg)
-                if doc["tipoDocumento"] == "Rendimentos e Amortizações":
+                try:
                     for seg in seguidores:
                         seg = int(seg)
-                        informar_proventos(doc, seg)
-            
+                        env(doc, seg)
+                    if doc["tipoDocumento"] == "Rendimentos e Amortizações":
+                        for seg in seguidores:
+                            seg = int(seg)
+                            informar_proventos(doc, seg)
+                except:
+                    ultima_busca[f] = h
 def agora():
     #return datetime.datetime.utcnow().astimezone(pytz.timezone("America/Bahia"))
     return datetime.datetime.now(tz=pytz.timezone("America/Bahia"))
     
 def exec_ver(parada):
-    espera = parada - agora()
-    print(espera.total_seconds())
-    time.sleep(espera.total_seconds())
-    verificar()
+    try:
+        espera = parada - agora()
+        print(espera.total_seconds())
+        time.sleep(espera.total_seconds())
+        Thread(target=verificar, daemon=True).start()
+    except:
+        pass
         
 def verificacao_periodica():
     #h = agora()
@@ -529,6 +538,9 @@ def verificacao_periodica():
         verificar()"""
         """if h.hour > datetime.datetime(h.year, h.month, h.day, 21, 30, tzinfo=tz_info) or h.hour < datetime.datetime(h.year, h.month, h.day, 9, 30, tzinfo=tz_info):"""
         #if h.hour > datetime.datetime(h.year, h.month, h.day, 21, 30, tzinfo=tz_info):
+        
+        #exec_ver(datetime.datetime(h.year, h.month, h.day, 20, 40, tzinfo=tz_info))
+        
         h += datetime.timedelta(days=1)
         
         exec_ver(datetime.datetime(h.year, h.month, h.day, 6, 0, tzinfo=tz_info))
