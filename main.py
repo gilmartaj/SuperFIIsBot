@@ -29,12 +29,14 @@ import pytz
 
 client = gspread.service_account(filename='superfiisbot-9f67df851d9a.json')
 
-sheet = client.open("SeguidoresFIIs").sheet1
+sheet = client.open("SuperFIIs").sheet1
 
 telebot.apihelper.SESSION_TIME_TO_LIVE = 60 * 15
 
+bot_aux = "776412005:AAFQ34LLsWSXeZYsg4wf-TICjYeJxh-9EQM"
+bot_super = "5747986812:AAG7f__d2EsGA-OcjV3_dquK7pA7KIqb-so"
 
-bot = telebot.TeleBot("5747986812:AAG7f__d2EsGA-OcjV3_dquK7pA7KIqb-so")
+bot = telebot.TeleBot(bot_super)
 
 
 
@@ -53,7 +55,7 @@ comandos = [
 
 fiis_cnpj = pd.read_csv("fiis_cnpj.csv", dtype={"Código":str, "CNPJ":str}).dropna()
 
-bot = telebot.TeleBot("5747986812:AAG7f__d2EsGA-OcjV3_dquK7pA7KIqb-so")    
+#bot = telebot.TeleBot("5747986812:AAG7f__d2EsGA-OcjV3_dquK7pA7KIqb-so")    
 
 class BaseCache:
     def __init__(self, base): #planilha do tipo dict
@@ -328,7 +330,7 @@ def handle_command(message):
     caption="2023"
     )"""
     
-    print("\n\n\nbbbb\n\n\n")
+    """print("\n\n\nbbbb\n\n\n")
     for fii in ("MCHF11", "HCTR11", "APTO11", "CYCR11", "FAED11", "HGIC11", "MCHF11", "RZAT11", "URPR11", "VGHF11","KIVO11", "LIFE11", "MCHY11", "MFCR11", "MGHT11", "PLOG11", "RPRI11", "KINP11"):
         aaa = buscar_documentos2(buscar_cnpj(fii), datetime.datetime.now()-datetime.timedelta(days=60))
         
@@ -338,10 +340,11 @@ def handle_command(message):
             
             a["codigoFII"] = fii
             #Thread(target=enviar_documento, args=(a, message.from_user.id), daemon=True).start()
-            #bot.set_my_commands([telebot.types.BotCommand(comando[0], comando[1]) for comando in comandos])"""
+            #bot.set_my_commands([telebot.types.BotCommand(comando[0], comando[1]) for comando in comandos])
             env(a, message.from_user.id)
             if a["tipoDocumento"] == "Rendimentos e Amortizações":
-                informar_proventos(a, message.from_user.id)
+                informar_proventos(a, message.from_user.id)"""
+    bot.send_message(message.from_user.id, "https://www.seudinheiro.com/2023/bolsa-dolar/ameaca-de-novo-calote-derruba-cotas-de-cinco-fundos-imobiliarios-na-b3-lvit/")
             
             
 @bot.message_handler(commands=["ultimos_documentos"])
@@ -363,14 +366,17 @@ def handle_command(message):
 def handle_command(message):
     #print(message)
     print(message.from_user.first_name, message.text)
-    ticker = message.text.split()[1].strip().upper()
-    r = base.inserir(ticker, str(message.from_user.id))
-    if r == 0:
-        bot.send_message(message.chat.id, f"Parabéns! Agora você receberá todos os documentos e comunicados referentes ao fundo {ticker}.", reply_to_message_id=message.id)
-    elif r == 1:
-        bot.send_message(message.chat.id, "Você já segue esse fundo. Assim que forem divulgados novos documentos ou comunicados, lhe enviaremos.", reply_to_message_id=message.id)
-    elif r == -1:
-        bot.send_message(message.chat.id, f"Não encontramos em nossa base de dados o fundo imobiliário {ticker}.", reply_to_message_id=message.id)
+    if len(message.text.strip().split()) == 2:
+        ticker = message.text.split()[1].strip().upper()
+        r = base.inserir(ticker, str(message.from_user.id))
+        if r == 0:
+            bot.send_message(message.chat.id, f"Parabéns! Agora você receberá todos os documentos e comunicados referentes ao fundo {ticker}.", reply_to_message_id=message.id)
+        elif r == 1:
+            bot.send_message(message.chat.id, "Você já segue esse fundo. Assim que forem divulgados novos documentos ou comunicados, lhe enviaremos.", reply_to_message_id=message.id)
+        elif r == -1:
+            bot.send_message(message.chat.id, f"Não encontramos em nossa base de dados o fundo imobiliário {ticker}.", reply_to_message_id=message.id)
+    else:
+        bot.send_message(message.chat.id, 'Uso incorreto. Para seguir um fundo envie /seguir CODIGO_FUNDO. Ex.: "/seguir URPR11"', reply_to_message_id=message.id)
         
 @bot.message_handler(commands=["desinscrever"])
 def handle_command(message):
