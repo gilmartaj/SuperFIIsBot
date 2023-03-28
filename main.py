@@ -7,7 +7,7 @@ import time
 import urllib
 from threading import Thread
 import re
-
+ 
 from telethon import TelegramClient
 import asyncio
 from telethon.tl.types import DocumentAttributeVideo, InputMediaUploadedDocument
@@ -112,7 +112,7 @@ class BaseCache:
             
     def colunas(self):
         return sorted(self.planilha.keys())
-
+ 
 base = BaseCache(sheet)
 
 def informar_proventos(doc, usuario):
