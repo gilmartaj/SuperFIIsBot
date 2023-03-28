@@ -461,7 +461,7 @@ def mensagem_instrucoes():
 @bot.message_handler(commands=["start"])
 def handle_command(message):
     #print(message)
-    print(message.from_user.first_name, message.text)
+    print(message.from_user.first_name, message.from_user.id, message.text)
     bot.send_message(message.from_user.id, "Seja bem-vindo ao @SuperFIIsBot!!!\n\n")
     bot.send_message(message.from_user.id, "Segue a lista de comandos disponíveis e suas respectivas descrições:\n\n"+mensagem_instrucoes())
     bot.send_message(message.from_user.id, "Em caso de dúvidas ou sugestões, entre em contato diretamente com o desenvolvedor @gilmartaj, ficaremos felizes em ajudar!")
