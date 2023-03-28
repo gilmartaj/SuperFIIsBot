@@ -29,7 +29,7 @@ import pytz
 
 client = gspread.service_account(filename='superfiisbot-9f67df851d9a.json')
 
-sheet = client.open("SuperFIIs").sheet1
+sheet = client.open("SeguidoresFIIs").sheet1
 
 telebot.apihelper.SESSION_TIME_TO_LIVE = 60 * 15
 
