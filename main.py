@@ -560,21 +560,7 @@ def verificacao_periodica():
         
         #exec_ver(datetime.datetime(h.year, h.month, h.day, 20, 40, tzinfo=tz_info))
         
-        h += datetime.timedelta(days=1)
-        
-        exec_ver(datetime.datetime(h.year, h.month, h.day, 6, 0, tzinfo=tz_info))
-        h = agora()
-        exec_ver(datetime.datetime(h.year, h.month, h.day, 9, 30, tzinfo=tz_info))
-        exec_ver(datetime.datetime(h.year, h.month, h.day, 10, 30, tzinfo=tz_info))
-        exec_ver(datetime.datetime(h.year, h.month, h.day, 12, 30, tzinfo=tz_info))
-        exec_ver(datetime.datetime(h.year, h.month, h.day, 15, 0, tzinfo=tz_info))
-        exec_ver(datetime.datetime(h.year, h.month, h.day, 16, 30, tzinfo=tz_info))
-        exec_ver(datetime.datetime(h.year, h.month, h.day, 17, 35, tzinfo=tz_info))
-        exec_ver(datetime.datetime(h.year, h.month, h.day, 17, 55, tzinfo=tz_info))
-        exec_ver(datetime.datetime(h.year, h.month, h.day, 18, 30, tzinfo=tz_info))
-        exec_ver(datetime.datetime(h.year, h.month, h.day, 20, 0, tzinfo=tz_info))
-        exec_ver(datetime.datetime(h.year, h.month, h.day, 21, 30, tzinfo=tz_info))
-        #h = agora()
+
         
         
         
