@@ -352,17 +352,21 @@ def handle_command(message):
 
     #print(message)
     print(message.from_user.first_name, message.text)
+    if len(message.text.strip().split()) == 2:
+        ticker = message.text.split()[1].strip().upper()
+        documentos = buscar_documentos2(buscar_cnpj(ticker), datetime.datetime.now() - datetime.timedelta(days=30))
+        print(documentos)
 
-    ticker = message.text.split()[1].strip().upper()
-    documentos = buscar_documentos2(buscar_cnpj(ticker), datetime.datetime.now() - datetime.timedelta(days=30))
-    print(documentos)
-        
-    for a in documentos:
-        print(ticker, "-", a["tipoDocumento"])
-        a["codigoFII"] = ticker
-        env(a, message.from_user.id)
+        for a in documentos:
+            print(ticker, "-", a["tipoDocumento"])
+            a["codigoFII"] = ticker
+            env(a, message.from_user.id)
+    elif len(message.text.strip().split()) == 1:
+        bot.send_message(message.chat.id, 'Informe o código de negociação do fundo imobiliário que você deseja seguir.\nEx.: "/ultimos_documentos URPR11".', reply_to_message_id=message.id)
+    else:
+        bot.send_message(message.chat.id, 'Uso incorreto. Para receber os comunicados mais recentes de um fundo, envie /ultimos_documentos CODIGO_FUNDO.\nEx.: "/ultimos_documentos URPR11".', reply_to_message_id=message.id)  
 
-@bot.message_handler(commands=["seguir"])
+      @bot.message_handler(commands=["seguir"])
 def handle_command(message):
     #print(message)
     print(message.from_user.first_name, message.text)
@@ -533,7 +537,16 @@ def verificacao_periodica():
     #exec_ver(datetime.datetime(h.year, h.month, h.day, 22, 30, tzinfo=tz_info))
 
     while True:
-        h = agora()
+        try:
+            Thread(target=verificar, daemon=True).start()
+            h = agora()
+            if h.hour > 7 and h.hour < 22:
+                time.sleep(600)
+            else:
+                time.sleep(3600)
+        except:
+            pass
+          
         
         """parada = agora() + datetime.timedelta(seconds = 5)
         #parada = datetime.datetime(h.year, h.month, h.day, 20, 58, tzinfo=h.tzinfo)
