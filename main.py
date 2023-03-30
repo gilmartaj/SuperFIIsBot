@@ -220,7 +220,7 @@ def env(doc, usuario):
             usuario,
             xml_pdf(f'https://fnet.bmfbovespa.com.br/fnet/publico/exibirDocumento?id={doc["id"]}'),
             visible_file_name="Arquivo.pdf",
-            caption=f'{doc["codigoFII"]} - {doc["tipoDocumento"]} {data_ref}\n\n@SuperFIIsBot'
+            caption=f'{doc["codigoFII"]} - {doc["tipoDocumento"]} {data_ref}\n\n@RepositorioDeFIIs'
             )
         else:
             loop = asyncio.new_event_loop()
@@ -268,7 +268,7 @@ async def enviar_documento(doc, usuario, client):
             
             #bot.send_document(556068392,open("/home/gilmartaj/SuperFIIs/Documento.pdf", "rb"), timeout=200)
             with open(f'{tipo_doc}.pdf', "rb") as fp:
-                    await client.send_file(usuario, file=fp, caption=f'{doc["codigoFII"]} - {tipo_doc} {data_ref}\n\n@SuperFIIsBot')
+                    await client.send_file(usuario, file=fp, caption=f'{doc["codigoFII"]} - {tipo_doc} {data_ref}\n\n@RepositorioDeFIIs')
     
 def buscar_cnpj(codigo_fii):
     return fiis_cnpj.where(fiis_cnpj["Código"] == codigo_fii).dropna().iloc[0]["CNPJ"]
