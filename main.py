@@ -366,7 +366,7 @@ def handle_command(message):
     else:
         bot.send_message(message.chat.id, 'Uso incorreto. Para receber os comunicados mais recentes de um fundo, envie /ultimos_documentos CODIGO_FUNDO.\nEx.: "/ultimos_documentos URPR11".', reply_to_message_id=message.id)  
 
-      @bot.message_handler(commands=["seguir"])
+@bot.message_handler(commands=["seguir"])
 def handle_command(message):
     #print(message)
     print(message.from_user.first_name, message.text)
