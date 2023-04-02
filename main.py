@@ -27,6 +27,8 @@ from bs4 import BeautifulSoup
 
 import pytz
 
+import traceback
+
 client = gspread.service_account(filename='superfiisbot-9f67df851d9a.json')
 
 sheet = client.open("SeguidoresFIIs").sheet1
@@ -43,8 +45,10 @@ bot = telebot.TeleBot(bot_super)
 comandos = [
     ("start", "Iniciar"),
     ("ajuda", "Exibe a mensagem de ajuda."),
+    ("cnpj", 'Exibe o CNPJ de um FII. Ex.: "/cnpj URPR11".'),
     ("contato", "Exibe informações para contato."),
     ("cotacao", 'Mostra a cotação de um fundo imobiliário. Ex.: "/cotacao URPR11"'),
+    ("docs", 'Receba os documentos emitidos pelo fundo nos últimos 30 dias. Ex.: "/docs URPR11"'),
     ("desinscrever", 'Use para deixar de seguir um FII que você segue. Ex.: "/desinscrever URPR11"'),
     ("doacao", "Ajude a manter o projeto vivo doando a partir de 1 centavo. Chave Pix: gil77891@gmail.com"),
     ("fundos_seguidos", "Lista todos os fundos imobiliários que você segue."),
@@ -112,12 +116,27 @@ class BaseCache:
             
     def colunas(self):
         return sorted(self.planilha.keys())
+        
+    def buscar_todos_usuarios(self):
+        seguidores = []
+        for f in self.planilha.keys():
+            for seg in self.buscar_seguidores(f):
+                if seg not in seguidores:
+                    seguidores.append(seg)
+        return seguidores
  
 base = BaseCache(sheet)
 
 def informar_proventos(doc, usuario):
 #422748
     r = requests.get(f'https://fnet.bmfbovespa.com.br/fnet/publico/downloadDocumento?id={doc["id"]}', headers={"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"})
+
+    v_atual = 0
+
+    try:
+        v_atual = get_ticker_value(doc["codigoFII"])
+    except:
+        pass
 
     dados = xmltodict.parse(r.content)
 
@@ -133,9 +152,12 @@ def informar_proventos(doc, usuario):
             elif d == "Rendimento":
                 mensagem += f'\n\n\U0001F3E0Código: {dados["DadosEconomicoFinanceiros"]["InformeRendimentos"]["Provento"]["CodNegociacao"]}'
                 print(float(dados["DadosEconomicoFinanceiros"]["InformeRendimentos"]["Provento"]["Rendimento"]["ValorProvento"]))
+                prov = float(dados["DadosEconomicoFinanceiros"]["InformeRendimentos"]["Provento"]["Rendimento"]["ValorProvento"])
                 mensagem += f'\n\U0001F4B0Rendimento: R$ {conv_monet(dados["DadosEconomicoFinanceiros"]["InformeRendimentos"]["Provento"]["Rendimento"]["ValorProvento"])}'
                 mensagem += f'\n\U0001F5D3Data base: {conv_data(dados["DadosEconomicoFinanceiros"]["InformeRendimentos"]["Provento"]["Rendimento"]["DataBase"])}'
                 mensagem += f'\n\U0001F4B8Data de pagamento: {conv_data(dados["DadosEconomicoFinanceiros"]["InformeRendimentos"]["Provento"]["Rendimento"]["DataPagamento"])}'
+                if v_atual and dados["DadosEconomicoFinanceiros"]["InformeRendimentos"]["Provento"]["CodNegociacao"] == doc["codigoFII"]:
+                    mensagem += f'\n\uFF05 (preço atual): {prov/v_atual:.2%}'.replace(".",",")
             elif d == "Amortizacao":
                 mensagem += f'\n\n\U0001F3E0Código: {dados["DadosEconomicoFinanceiros"]["InformeRendimentos"]["Provento"]["CodNegociacao"]}'
                 print(float(dados["DadosEconomicoFinanceiros"]["InformeRendimentos"]["Provento"]["Amortizacao"]["ValorProvento"]))
@@ -149,9 +171,12 @@ def informar_proventos(doc, usuario):
                 if d2 == "Rendimento":
                     mensagem += f'\n\n\U0001F3E0Código: {d["CodNegociacao"]}'
                     print(float(d[d2]["ValorProvento"]))
+                    prov = float(d[d2]["ValorProvento"])
                     mensagem += f'\n\U0001F4B0Rendimento: R$ {conv_monet(d[d2]["ValorProvento"])}'
                     mensagem += f'\n\U0001F5D3Data base: {conv_data(d[d2]["DataBase"])}'
                     mensagem += f'\n\U0001F4B8Data de pagamento: {conv_data(d[d2]["DataPagamento"])}'
+                    if v_atual and d["CodNegociacao"] == doc["codigoFII"]:
+                        mensagem += f'\n\uFF05 (preço atual): {prov/v_atual:.2%}'.replace(".",",")
                 elif d2 == "Amortizacao":
                     mensagem += f'\n\n\U0001F3E0Código: {d["CodNegociacao"]}'
                     print(d[d2]["ValorProvento"])
@@ -160,8 +185,102 @@ def informar_proventos(doc, usuario):
                     mensagem += f'\n\U0001F4B8Data de pagamento: {conv_data(d[d2]["DataPagamento"])}'
         #print(mensagem)
         
-    mensagem += "\n\n@SuperFIIsBot"
+        
+    mensagem += "\n\n@RepositorioDeFIIs"
     bot.send_message(usuario, mensagem)
+
+def informar_fechamento2():
+    dic = {}
+    usuarios = base.buscar_todos_usuarios()
+    usuarios.remove("-1001894911077")
+    usuarios.append("-1001894911077")
+    #usuarios.insert(0, "556068392")
+    print(usuarios)
+
+    for usuario in usuarios:#usuarios:#base.buscar_todos_seguidores:
+        fs = base.buscar_seguidos(usuario)
+        if len(fs) == 0:
+            continue
+        msg = mensagem_lista_fechamento(fs, dic)
+        if msg:
+            h = agora() - datetime.timedelta(days=1)
+            try:
+                if len(msg) <= 3850:
+                    msg = f"\U0001F6AAFECHAMENTO ({h.day:02d}/{h.month:02d}/{h.year})\n" + msg + "\n\n@SuperFIIsBot"
+                    bot.send_message(usuario, msg)
+                else:
+                    msg1 = f"\U0001F6AAFECHAMENTO ({h.day:02d}/{h.month:02d}/{h.year})\n" + msg[:msg.index("\n", 3850)] + "\n\n@RepositorioDeFIIs"
+                    bot.send_message(usuario, msg1)
+                    msg2 = f"\U0001F6AAFECHAMENTO ({h.day:02d}/{h.month:02d}/{h.year})\n" + msg[msg.index("\n", 3850):] + "\n\n@RepositorioDeFIIs"
+                    bot.send_message(usuario, msg2)
+            except:
+                pass
+            
+
+def mensagem_lista_fechamento(fundos, dic):  
+    if len(fundos) > 0:
+        msg = "" 
+        for f in fundos:
+            try:
+                #print(f)
+                if f in dic and dic[f][0] and dic[f][1]:
+                    v, variacao = dic[f]
+                    print("Já lá")
+                else:
+                    v, variacao = get_ticker_variacao(f)
+                    time.sleep(5)
+                    dic[f] = (v, variacao)
+                l = f"{f}: R$ {v:.2f}".replace(".",",")
+                #print(variacao)
+                if variacao:
+                    l += f" ({variacao}%)"
+                    if variacao.startswith("+"):
+                        l = "\U0001F7E2" + l
+                    elif variacao.startswith("−") or variacao.startswith("-"):
+                        l = "\U0001F53B" + l
+                    else:
+                        #print("else")
+                        l = "\u2B1C" + l
+                else:
+                    l = "\u26AB" + l
+                msg += "\n"+l
+            except Exception:
+                pass#traceback.print_exc()
+    
+    print(msg)            
+    return msg
+
+def informar_fechamento(fundos, usuario):
+    h = agora()
+    msg = f"Fechamento ({h.day:02d}/{h.month:02d}/{h.year})\n"
+    
+    if len(fundos) > 0:
+    
+        for f in fundos:
+            try:
+                print(f)
+                v = get_ticker_value(f)
+                l = f"{f}: R$ {v:.2f}".replace(".",",")
+                variacao = get_variacao(f)
+                print(variacao)
+                if variacao:
+                    l += f" ({variacao}%)"
+                    if variacao.startswith("+"):
+                        l = "\U0001F7E2" + l
+                    elif variacao.startswith("−") or variacao.startswith("-"):
+                        l = "\U0001F53B" + l
+                    else:
+                        print("else")
+                        l = "\u2B1C" + l
+                else:
+                    l = "\u26AB" + l
+                msg += "\n"+l
+            except:
+                pass
+                
+        msg += "\n\n@SuperFIIsBot"
+        
+        bot.send_message(usuario, msg)
         
 def conv_data(data):
     return f"{data[8:10]}/{data[5:7]}/{data[0:4]}"
@@ -200,7 +319,7 @@ def buscar_documentos2(cnpj, desde=""):
     lista = []
     for d in r.json()["data"]:
         de = d["dataEntrega"]
-        print(datetime.datetime(year=int(de[6:10]), month=int(de[3:5]), day=int(de[0:2]), hour=int(de[11:13])), desde)
+        #print(datetime.datetime(year=int(de[6:10]), month=int(de[3:5]), day=int(de[0:2]), hour=int(de[11:13])), desde)
         if datetime.datetime(year=int(de[6:10]), month=int(de[3:5]), day=int(de[0:2]), hour=int(de[11:13]), minute=int(de[14:16])) < desde:
             break
         if d["status"] == "AC":
@@ -210,18 +329,71 @@ def buscar_documentos2(cnpj, desde=""):
         
 def baixarDocumento(link):
     pass
+
+def envio_multiplo(doc, file_id, usuarios, caption_):
+    for u in usuarios:
+            bot.send_document(
+            u,
+            file_id,
+            visible_file_name="Informe.pdf",
+            caption=caption_
+            )
   
+def envio_multiplo_telebot(doc, usuarios, caption_):
+    if len(usuarios) <= 0:
+        return
+        
+    dx = bot.send_document(
+            usuarios[0],
+            xml_pdf(f'https://fnet.bmfbovespa.com.br/fnet/publico/exibirDocumento?id={doc["id"]}'),
+            visible_file_name="Informe.pdf",
+            caption=caption_
+            )
+    if len(usuarios) > 1:        
+        envio_multiplo(doc, dx.document.file_id, usuarios[1:], caption_)
+        
+def envio_multiplo_telethon(doc, usuarios):
+    if len(usuarios) <= 0:
+        return
+        
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    tipo_doc = doc["tipoDocumento"].replace("/", "-") if doc["tipoDocumento"].strip() != "" else doc["categoriaDocumento"]
+    with TelegramClient("bot", "14595347", "ff2597a5880da0bdd36363b2c8a3aa94").start(bot_token="5747986812:AAG7f__d2EsGA-OcjV3_dquK7pA7KIqb-so") as client:
+     with open(f'{tipo_doc}.pdf', "wb") as f:
+        f.write(requests.get(f'https://fnet.bmfbovespa.com.br/fnet/publico/exibirDocumento?id={doc["id"]}', headers={"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"}).content)
+        loop.run_until_complete(asyncio.wait([ enviar_documento( doc, int(usuarios[0]), client)]))
+        #print("LLLLLLLLLLLLLLLL")
+     os.remove(f'{tipo_doc}.pdf')
+    
+    if len(usuarios) > 1:
+        tipo_doc = doc["tipoDocumento"].replace("/", "-") if doc["tipoDocumento"].strip() != "" else doc["categoriaDocumento"]
+        if tipo_doc == "Relatório Gerencial":
+            data_ref = re.search(r"\d\d/\d\d\d\d", doc["dataReferencia"])
+        else:
+            data_ref = re.search(r"\d\d/\d\d/\d\d\d\d", doc["dataReferencia"])
+        data_ref = "("+data_ref.group()+")" if data_ref else doc["dataReferencia"].replace("/", "-").replace(":", "-")     
+        envio_multiplo(doc, doc["file_id"], usuarios[1:], f'{doc["codigoFII"]} - {doc["tipoDocumento"]} {data_ref}\n\n@RepositorioDeFIIs')
+
+def env2(doc, usuarios):
+    if doc["categoriaDocumento"] in ("Informes Periódicos", "Aviso aos Cotistas - Estruturado") and doc["tipoDocumento"] != "Demonstrações Financeiras" or "Estruturado" in doc["tipoDocumento"] or "Formulário de Liberação para Negociação das Cotas" in doc["tipoDocumento"]:
+        data_ref = re.search(r"\d\d/\d\d\d\d", doc["dataReferencia"])
+        data_ref = "("+data_ref.group()+")" if data_ref else doc["dataReferencia"].replace("/", "-").replace(":", "-")
+        envio_multiplo_telebot(doc, usuarios, f'{doc["codigoFII"]} - {doc["tipoDocumento"]} {data_ref}\n\n@RepositorioDeFIIs')
+    else:
+        envio_multiplo_telethon(doc, usuarios)
   
 def env(doc, usuario):
         if doc["categoriaDocumento"] in ("Informes Periódicos", "Aviso aos Cotistas - Estruturado") and doc["tipoDocumento"] != "Demonstrações Financeiras" or "Estruturado" in doc["tipoDocumento"] or "Formulário de Liberação para Negociação das Cotas" in doc["tipoDocumento"]:
             data_ref = re.search(r"\d\d/\d\d\d\d", doc["dataReferencia"])
             data_ref = "("+data_ref.group()+")" if data_ref else doc["dataReferencia"].replace("/", "-").replace(":", "-")
-            bot.send_document(
+            dx = bot.send_document(
             usuario,
             xml_pdf(f'https://fnet.bmfbovespa.com.br/fnet/publico/exibirDocumento?id={doc["id"]}'),
             visible_file_name="Arquivo.pdf",
-            caption=f'{doc["codigoFII"]} - {doc["tipoDocumento"]} {data_ref}\n\n@RepositorioDeFIIs'
+            caption=f'{doc["codigoFII"]} - {doc["tipoDocumento"]} {data_ref}\n\n@SuperFIIsBot'
             )
+            #print(dx.document.file_id)
         else:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
@@ -268,7 +440,10 @@ async def enviar_documento(doc, usuario, client):
             
             #bot.send_document(556068392,open("/home/gilmartaj/SuperFIIs/Documento.pdf", "rb"), timeout=200)
             with open(f'{tipo_doc}.pdf', "rb") as fp:
-                    await client.send_file(usuario, file=fp, caption=f'{doc["codigoFII"]} - {tipo_doc} {data_ref}\n\n@RepositorioDeFIIs')
+                    z = await client.send_file(usuario, file=fp, caption=f'{doc["codigoFII"]} - {tipo_doc} {data_ref}\n\n@RepositorioDeFIIs')
+                    #print("ID:", z.file.id)
+                    #telebot.TeleBot(bot_super).send_document(usuario, z.file.id, caption="TESTE")
+                    doc["file_id"] = z.file.id
     
 def buscar_cnpj(codigo_fii):
     return fiis_cnpj.where(fiis_cnpj["Código"] == codigo_fii).dropna().iloc[0]["CNPJ"]
@@ -296,7 +471,7 @@ def xml_pdf(link):
 
     server_file = requests.post(f"https://api32.ilovepdf.com/v1/upload", headers=h, data=f'-----------------------------23846124012560570869635858195\r\nContent-Disposition: form-data; name="task"\r\n\r\nw3xjsv3pgkt1hklngy36z0v2q0pdhv01rpx7brwwyxd7AAztccm2p3g9nkwq6gbc2085df55v058qyx32lsktAg8mvtmxlxm1zj3h1h20gvtkgdmr6dy5mnlkkntqgAdk7ssy1z9yq00bjm42rfzlv6qpw4b1yp48Av3mggqA60rg7p7zygq\r\n-----------------------------23846124012560570869635858195\r\nContent-Disposition: form-data; name="cloud_file"\r\n\r\n{link}\r\n-----------------------------23846124012560570869635858195--\r\n'.encode("utf-8")).json()["server_filename"]
 
-    print(server_file)
+    #print(server_file)
 
     #sys.exit(0)
 
@@ -330,9 +505,11 @@ def handle_command(message):
     caption="2023"
     )"""
     
+    #informar_fechamento(("MCHF11", "HCTR11", "APTO11", "CYCR11", "FAED11", "HGIC11", "MCHF11", "RZAT11", "URPR11", "VGHF11","KIVO11", "LIFE11", "MCHY11", "MFCR11", "MGHT11", "PLOG11", "RPRI11", "KINP11"), message.from_user.id)
+    
     """print("\n\n\nbbbb\n\n\n")
     for fii in ("MCHF11", "HCTR11", "APTO11", "CYCR11", "FAED11", "HGIC11", "MCHF11", "RZAT11", "URPR11", "VGHF11","KIVO11", "LIFE11", "MCHY11", "MFCR11", "MGHT11", "PLOG11", "RPRI11", "KINP11"):
-        aaa = buscar_documentos2(buscar_cnpj(fii), datetime.datetime.now()-datetime.timedelta(days=60))
+        aaa = buscar_documentos2(buscar_cnpj(fii), datetime.datetime.now()-datetime.timedelta(days=1))
         
         
         for a in aaa:
@@ -343,28 +520,39 @@ def handle_command(message):
             #bot.set_my_commands([telebot.types.BotCommand(comando[0], comando[1]) for comando in comandos])
             env(a, message.from_user.id)
             if a["tipoDocumento"] == "Rendimentos e Amortizações":
-                informar_proventos(a, message.from_user.id)"""
-    bot.send_message(message.from_user.id, "https://www.seudinheiro.com/2023/bolsa-dolar/ameaca-de-novo-calote-derruba-cotas-de-cinco-fundos-imobiliarios-na-b3-lvit/")
+                informar_proventos(a, message.from_user.id)
+    bot.send_message(message.from_user.id, "https://www.seudinheiro.com/2023/bolsa-dolar/ameaca-de-novo-calote-derruba-cotas-de-cinco-fundos-imobiliarios-na-b3-lvit/")"""
             
             
-@bot.message_handler(commands=["ultimos_documentos"])
+@bot.message_handler(commands=["docs", "ultimos_documentos"])
 def handle_command(message):
-
+    cmd = message.text.split()[0]
     #print(message)
     print(message.from_user.first_name, message.text)
     if len(message.text.strip().split()) == 2:
         ticker = message.text.split()[1].strip().upper()
+        if not ticker in base.colunas():
+            if ticker in ("BODB11", "BDIF11", "CPTI11", "BIDB11", "IFRA11", "KDIF11", "OGIN11", "RBIF11", "CDII11", "JURO11", "SNID11", "XPID11"):
+                bot.send_message(message.chat.id, f"Desculpe, mas no momento não temos a opção ver de documentos de FI-Infras.", reply_to_message_id=message.id)
+                return
+            bot.send_message(message.chat.id, f"Não encontramos em nossa base de dados o fundo imobiliário {ticker}.", reply_to_message_id=message.id)
+            return
+        bot.send_message(message.chat.id, f"Buscando documentos...")
         documentos = buscar_documentos2(buscar_cnpj(ticker), datetime.datetime.now() - datetime.timedelta(days=30))
-        print(documentos)
-
-        for a in documentos:
-            print(ticker, "-", a["tipoDocumento"])
-            a["codigoFII"] = ticker
-            env(a, message.from_user.id)
+        #print(documentos)
+        if len(documentos) == 0:
+            bot.send_message(message.chat.id, f"O fundo imobiliário {ticker} não disponibilizaou nenhum documento nos últimos 30 dias.")
+            return
+        for doc in documentos:
+            print(ticker, "-", doc["tipoDocumento"])
+            doc["codigoFII"] = ticker
+            env(doc, message.from_user.id)
+            #if doc["tipoDocumento"] == "Rendimentos e Amortizações":
+                #informar_proventos(doc, message.from_user.id)
     elif len(message.text.strip().split()) == 1:
-        bot.send_message(message.chat.id, 'Informe o código de negociação do fundo imobiliário que você deseja seguir.\nEx.: "/ultimos_documentos URPR11".', reply_to_message_id=message.id)
+        bot.send_message(message.chat.id, f'Informe o código de negociação do fundo imobiliário que você deseja ver os últimos documentos.\nEx.: "{cmd} URPR11".', reply_to_message_id=message.id)
     else:
-        bot.send_message(message.chat.id, 'Uso incorreto. Para receber os comunicados mais recentes de um fundo, envie /ultimos_documentos CODIGO_FUNDO.\nEx.: "/ultimos_documentos URPR11".', reply_to_message_id=message.id)  
+        bot.send_message(message.chat.id, f'Uso incorreto. Para receber os comunicados mais recentes de um fundo, envie {cmd} CODIGO_FUNDO.\nEx.: "{cmd} URPR11".', reply_to_message_id=message.id)
 
 @bot.message_handler(commands=["seguir"])
 def handle_command(message):
@@ -378,7 +566,10 @@ def handle_command(message):
         elif r == 1:
             bot.send_message(message.chat.id, "Você já segue esse fundo. Assim que forem divulgados novos documentos ou comunicados, lhe enviaremos.", reply_to_message_id=message.id)
         elif r == -1:
-            bot.send_message(message.chat.id, f"Não encontramos em nossa base de dados o fundo imobiliário {ticker}.", reply_to_message_id=message.id)
+            if ticker in ("BODB11", "BDIF11", "CPTI11", "BIDB11", "IFRA11", "KDIF11", "OGIN11", "RBIF11", "CDII11", "JURO11", "SNID11", "XPID11"):
+                bot.send_message(message.chat.id, f"Desculpe, mas no momento não temos a opção de seguir FI-Infras.", reply_to_message_id=message.id)
+            else:
+                bot.send_message(message.chat.id, f"Não encontramos em nossa base de dados o fundo imobiliário {ticker}.", reply_to_message_id=message.id)
     else:
         bot.send_message(message.chat.id, 'Uso incorreto. Para seguir um fundo envie /seguir CODIGO_FUNDO. Ex.: "/seguir URPR11"', reply_to_message_id=message.id)
         
@@ -386,6 +577,9 @@ def handle_command(message):
 def handle_command(message):
     #print(message)
     print(message.from_user.first_name, message.text)
+    if len(message.text.split()) != 2:
+        bot.send_message(message.chat.id, 'Uso incorreto. Para deixar de seguir um fundo envie /desinscrever CODIGO_FUNDO. Ex.: "/desinscrever URPR11"', reply_to_message_id=message.id)
+        return
     ticker = message.text.split()[1].strip().upper()
     r = base.remover(ticker, str(message.from_user.id))
     if r == 0:
@@ -410,14 +604,16 @@ def handle_command(message):
        
        
 def get_ticker_value(ticker):
+    if ticker.upper() == "KNHF11":
+        raise Exception("Não encontrado")
     headers = {'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:108.0) Gecko/20100101 Firefox/108.0'} 
     url = f'https://www.google.com/search?q={ticker}'
     try:
         res = requests.get(url, headers=headers)
         html_page = res.text
         
-        if "BVMF:"+ticker.upper() not in html_page:
-            raise Exception("Não encontrado")
+        #if "BVMF:"+ticker.upper() not in html_page:
+            #raise Exception("Não encontrado")
 
         
         soup = BeautifulSoup(html_page, 'html.parser')
@@ -430,8 +626,8 @@ def get_ticker_value(ticker):
         res = requests.get(url, headers=headers)
         html_page = res.text
         
-        if "BVMF:"+ticker.upper() not in html_page:
-            raise Exception("Não encontrado")
+        #if "BVMF:"+ticker.upper() not in html_page:
+            #raise Exception("Não encontrado")
 
         
         soup = BeautifulSoup(html_page, 'html.parser')
@@ -441,7 +637,72 @@ def get_ticker_value(ticker):
         valor = float(soup.find_all('span', {"class":'IsqQVc NprOob wT3VGc'})[0].text.replace(",","."))
         
     return valor
-
+    
+def get_variacao(ticker):
+    valor = ""
+    headers = {'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:108.0) Gecko/20100101 Firefox/108.0'} 
+    url = f'https://www.google.com/search?q={ticker}'
+    try:
+        res = requests.get(url, headers=headers)
+        html_page = res.text       
+        soup = BeautifulSoup(html_page, 'html.parser')
+        sinal = soup.find_all('span', {"jsname":'qRSVye'})[0].text.strip()[0]
+        valor = soup.find_all('span', {"class":'jBBUv'})[0].text.strip().replace(".",",").replace("(","").replace(")","").replace("%","")
+        if sinal == "+":
+            valor = "+"+valor
+        elif sinal in ("−","-"):
+            valor = "-"+valor
+    except:
+        try:
+            res = requests.get(url, headers=headers)
+            html_page = res.text       
+            soup = BeautifulSoup(html_page, 'html.parser')
+            sinal = soup.find_all('span', {"jsname":'qRSVye'})[0].text.strip()[0]
+            valor = soup.find_all('span', {"class":'jBBUv'})[0].text.strip().replace(".",",").replace("(","").replace(")","").replace("%","")
+            if sinal == "+":
+                valor = "+"+valor
+            elif sinal in ("−","-"):
+                valor = "-"+valor
+        except:
+            pass
+    
+    return valor
+    
+def get_ticker_variacao(ticker):
+    valor = None
+    variacao = ""
+    if ticker.upper() == "KNHF11":
+        return (valor, variacao)
+    headers = {'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:108.0) Gecko/20100101 Firefox/108.0'} 
+    url = f'https://www.google.com/search?q={ticker}'
+    try:
+        res = requests.get(url, headers=headers)
+        html_page = res.text       
+        soup = BeautifulSoup(html_page, 'html.parser')
+        valor = float(soup.find_all('span', {"class":'IsqQVc NprOob wT3VGc'})[0].text.replace(",","."))
+        sinal = soup.find_all('span', {"jsname":'qRSVye'})[0].text.strip()[0]
+        variacao = soup.find_all('span', {"class":'jBBUv'})[0].text.strip().replace(".",",").replace("(","").replace(")","").replace("%","")
+        if sinal == "+":
+            variacao = "+"+variacao
+        elif sinal in ("−","-"):
+            variacao = "-"+variacao
+    except:
+        try:
+            res = requests.get(url, headers=headers)
+            html_page = res.text       
+            soup = BeautifulSoup(html_page, 'html.parser')
+            if not valor:
+                valor = float(soup.find_all('span', {"class":'IsqQVc NprOob wT3VGc'})[0].text.replace(",","."))
+            sinal = soup.find_all('span', {"jsname":'qRSVye'})[0].text.strip()[0]
+            variacao = soup.find_all('span', {"class":'jBBUv'})[0].text.strip().replace(".",",").replace("(","").replace(")","").replace("%","")
+            if sinal == "+":
+                variacao = "+"+variacao
+            elif sinal in ("−","-"):
+                variacao = "-"+variacao
+        except:
+            pass
+    
+    return (valor, variacao)
        
         
 @bot.message_handler(regexp=r"(\s)*/cotacao.* [A-Za-z]{4}11")
@@ -455,6 +716,19 @@ def handle_command(message):
         bot.send_message(message.chat.id, f"R$ {valor:.2f}".replace(".",","), reply_to_message_id=message.id)
     except:
         bot.send_message(message.chat.id, 'Ocorreu um erro, tente novamente.')
+        
+@bot.message_handler(commands=["cnpj"])
+def handle_command(message):
+    if len(message.text.strip().split()) == 2:
+        try:
+            print(message.from_user.first_name, message.text)
+            ticker = message.text.split()[1].strip()
+            cnpj = buscar_cnpj(ticker.upper())
+            bot.send_message(message.chat.id, cnpj, reply_to_message_id=message.id)
+        except:
+            bot.send_message(message.chat.id, f"Não encontramos em nossa base de dados o fundo imobiliário {ticker}.")
+    else:
+        bot.send_message(message.chat.id, 'Uso incorreto. Para ver o CNPJ um fundo envie /cnpj CODIGO_FUNDO. Ex.: "/cnpj URPR11"', reply_to_message_id=message.id)
 
 def mensagem_instrucoes():
     msg = ""
@@ -465,6 +739,8 @@ def mensagem_instrucoes():
 @bot.message_handler(commands=["start"])
 def handle_command(message):
     #print(message)
+    #bot.forward_message("-743953207", message.chat.id, message.id)
+    bot.send_message("-743953207", f"{message.from_user.first_name} ({message.from_user.id}) {message.text}")
     print(message.from_user.first_name, message.from_user.id, message.text)
     bot.send_message(message.from_user.id, "Seja bem-vindo ao @SuperFIIsBot!!!\n\n")
     bot.send_message(message.from_user.id, "Segue a lista de comandos disponíveis e suas respectivas descrições:\n\n"+mensagem_instrucoes())
@@ -488,6 +764,7 @@ def handle_command(message):
 
 
 def verificar():
+    #print("Verificando...")
     for f in base.colunas():
         seguidores = base.buscar_seguidores(f)
         if len(seguidores) > 0:
@@ -500,9 +777,9 @@ def verificar():
             except:
                 pass
             
-            if len(documentos) == 0:
-                for seg in seguidores:
-                    seg = int(seg)
+            #if len(documentos) == 0:
+             #   for seg in seguidores:
+             #       seg = int(seg)
                     #bot.send_message(seg, f + " - Nenhum documento")
             
             for doc in documentos:
@@ -519,6 +796,38 @@ def verificar():
                             informar_proventos(doc, seg)
                 except:
                     ultima_busca[f] = h
+                    
+def verificar2():
+    for f in base.colunas():
+        seguidores = base.buscar_seguidores(f)
+        if len(seguidores) > 0:
+            #print(f, len(seguidores))
+            h = ultima_busca[f]
+            ultima_busca[f] = agora()
+            documentos = []
+            try:
+                documentos = buscar_documentos(buscar_cnpj(f), h)
+            except:
+                pass
+            
+            #if len(documentos) == 0:
+             #   for seg in seguidores:
+             #       seg = int(seg)
+                    #bot.send_message(seg, f + " - Nenhum documento")
+            
+            for doc in documentos:
+                print(f, "-", doc["tipoDocumento"])
+                
+                doc["codigoFII"] = f
+                try:
+                    env(doc, seguidores)
+                    if doc["tipoDocumento"] == "Rendimentos e Amortizações":
+                        for seg in seguidores:
+                            seg = int(seg)
+                            informar_proventos(doc, seg)
+                except:
+                    ultima_busca[f] = h
+                    
 def agora():
     #return datetime.datetime.utcnow().astimezone(pytz.timezone("America/Bahia"))
     return datetime.datetime.now(tz=pytz.timezone("America/Bahia"))
@@ -540,10 +849,11 @@ def verificacao_periodica():
         try:
             Thread(target=verificar, daemon=True).start()
             h = agora()
-            if h.hour > 7 and h.hour < 22:
+            if is_dia_util(h.date()) and h.hour > 7 and h.hour < 22:
                 time.sleep(600)
             else:
                 time.sleep(3600)
+                print("Verificando...")
         except:
             pass
           
@@ -558,11 +868,46 @@ def verificacao_periodica():
         """if h.hour > datetime.datetime(h.year, h.month, h.day, 21, 30, tzinfo=tz_info) or h.hour < datetime.datetime(h.year, h.month, h.day, 9, 30, tzinfo=tz_info):"""
         #if h.hour > datetime.datetime(h.year, h.month, h.day, 21, 30, tzinfo=tz_info):
         
-        #exec_ver(datetime.datetime(h.year, h.month, h.day, 20, 40, tzinfo=tz_info))
-        
+        #exec_ver(datetime.datetime(h.year, h.month, h.day, 20, 40, tzinfo=tz_info))        
 
+def is_feriado(data):
+    return (data.day == 1 and data.month == 1 or data.day == 21 and data.month == 4 or data.day == 1 and data.month == 5 or data.day == 1 and data.month == 5 or data.day == 7 and data.month == 9 or data.day == 12 and data.month == 10 or data.day == 2 and data.month == 11 or data.day == 15 and data.month == 11 or data.day == 25 and data.month == 12)
+    
+def is_feriado_movel(data):
+    return data in (datetime.date(2023,4,7),datetime.date(2023,6,8),datetime.date(2023,12,29))
+    
+def is_fim_de_semana(data):
+    return data.weekday() in (5,6)
+
+def is_dia_util(data):       
+    return not is_fim_de_semana(data) and not is_feriado(data) and not is_feriado_movel(data)
+    
+def thread_fechamento():
+    h = agora()
+    parada = datetime.datetime(h.year, h.month, h.day, 18, 30, tzinfo=h.tzinfo)
+    if h.hour >= 18:
+        parada += datetime.timedelta(days=1)
         
+    #parada = agora() + datetime.timedelta(seconds=10)
+    #print("Esperando")
+    
+    while True:
+        espera = parada - agora()
+        print("Esperando...")
+        time.sleep(espera.total_seconds())
+        try:
+            if is_dia_util(agora().date()):
+                Thread(target=informar_fechamento2, daemon=True).start()
+        except:
+            pass
+        parada += datetime.timedelta(days=1)
         
+def thread_teste():
+    docs = buscar_documentos(buscar_cnpj("FAED11"), desde=agora()-datetime.timedelta(days=30))  
+    print(len(docs))
+    for doc in docs:
+        doc["codigoFII"] = "FAED11"
+        env2(doc, ["-495713843", "556068392"])
         
 tz_info = agora().tzinfo
       
@@ -573,6 +918,8 @@ for f in base.colunas():
 print("Robô iniciado.")
 #print(fiis_cnpj)
 
+#Thread(target=thread_teste).start()
+Thread(target=thread_fechamento, daemon=True).start()
 Thread(target=verificacao_periodica, daemon=True).start()
 bot.set_my_commands([telebot.types.BotCommand(comando[0], comando[1]) for comando in comandos])
 
