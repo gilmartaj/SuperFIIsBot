@@ -203,7 +203,7 @@ def informar_fechamento2():
             continue
         msg = mensagem_lista_fechamento(fs, dic)
         if msg:
-            h = agora() - datetime.timedelta(days=1)
+            h = agora()
             try:
                 if len(msg) <= 3850:
                     msg = f"\U0001F6AAFECHAMENTO ({h.day:02d}/{h.month:02d}/{h.year})\n" + msg + "\n\n@SuperFIIsBot"
