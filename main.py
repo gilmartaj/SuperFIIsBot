@@ -796,6 +796,7 @@ def verificar():
                             informar_proventos(doc, seg)
                 except:
                     ultima_busca[f] = h
+                    print("Erro estranho!")
                     
 def verificar2():
     for f in base.colunas():
@@ -847,13 +848,13 @@ def verificacao_periodica():
 
     while True:
         try:
+            print("Verificando...")
             Thread(target=verificar, daemon=True).start()
             h = agora()
             if is_dia_util(h.date()) and h.hour > 7 and h.hour < 22:
                 time.sleep(600)
             else:
                 time.sleep(3600)
-                print("Verificando...")
         except:
             pass
           
@@ -913,7 +914,7 @@ tz_info = agora().tzinfo
       
 ultima_busca = {}
 for f in base.colunas():
-    ultima_busca[f] = agora() - datetime.timedelta(minutes=25)
+    ultima_busca[f] = agora() - datetime.timedelta(minutes=35)
        
 print("Robô iniciado.")
 #print(fiis_cnpj)
