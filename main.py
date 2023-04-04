@@ -730,7 +730,7 @@ def get_ticker_variacao2(ticker):
     variacao = ""
     if ticker.upper() == "KNHF11":
         return (valor, variacao)
-    headers = {'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:108.0) Gecko/20100101 Firefox/108.0',"Accept":
+    headers = {'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/111.0',"Accept":
 	"text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8", "Cookie": "_adasys=3e862075-4c8c-49e1-93c7-1e75e21c45ae; G_ENABLED_IDPS=google; .StatusInvest=eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJBY2NvdW50SWQiOiI3MDA3MDgiLCJOYW1lIjoiR2lsbWFyIErDum5pb3IiLCJFbWFpbCI6ImdpbC5pbnZlc3QyMDAwQGdtYWlsLmNvbSIsIkludGVyZmFjZVR5cGUiOiJXZWIiLCJJcCI6Ijo6ZmZmZjoxMC4xMDAuMTAuMTM3IiwibmJmIjoxNjc2MDc3MjAyLCJleHAiOjE2NzYxNjM2MDIsImlhdCI6MTY3NjA3NzIwMiwiaXNzIjoiU3RhdHVzSW52ZXN0IiwiYXVkIjoiU3RhdHVzSW52ZXN0In0.3YIm9kn_P0S9NCdOPW6u0XMqW2oSO3Tqq6YB1VqhZgsooFHbv"} 
     url = "https://statusinvest.com.br/fundos-imobiliarios/" + ticker
     try:
