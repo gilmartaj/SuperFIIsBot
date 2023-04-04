@@ -13,7 +13,7 @@ import asyncio
 from telethon.tl.types import DocumentAttributeVideo, InputMediaUploadedDocument
 
 import os
- 
+
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
@@ -52,6 +52,7 @@ comandos = [
     ("desinscrever", 'Use para deixar de seguir um FII que você segue. Ex.: "/desinscrever URPR11"'),
     ("doacao", "Ajude a manter o projeto vivo doando a partir de 1 centavo. Chave Pix: gil77891@gmail.com"),
     ("fundos_seguidos", "Lista todos os fundos imobiliários que você segue."),
+    ("rend", 'Informa a última distribuição de proventos do fundo. Ex.: "/rend URPR11"'),
     ("seguir", 'Use para receber todos os documentos e informações de rendimentos de um FII. Ex.: "/seguir URPR11"'), 
     ("ultimos_documentos", 'Receba os documentos emitidos pelo fundo nos últimos 30 dias. Ex.: "/ultimos_documentos URPR11"'),
     #("teste", "Teste"),
@@ -209,10 +210,12 @@ def informar_fechamento2():
                     msg = f"\U0001F6AAFECHAMENTO ({h.day:02d}/{h.month:02d}/{h.year})\n" + msg + "\n\n@SuperFIIsBot"
                     bot.send_message(usuario, msg)
                 else:
-                    msg1 = f"\U0001F6AAFECHAMENTO ({h.day:02d}/{h.month:02d}/{h.year})\n" + msg[:msg.index("\n", 3850)] + "\n\n@RepositorioDeFIIs"
+                    msg1 = f"\U0001F6AAFECHAMENTO ({h.day:02d}/{h.month:02d}/{h.year})\n" + msg[:msg.index("\n", 3300)] + "\n\n@RepositorioDeFIIs\n@SuperFIIsBot"
                     bot.send_message(usuario, msg1)
-                    msg2 = f"\U0001F6AAFECHAMENTO ({h.day:02d}/{h.month:02d}/{h.year})\n" + msg[msg.index("\n", 3850):] + "\n\n@RepositorioDeFIIs"
+                    msg2 = f"\U0001F6AAFECHAMENTO ({h.day:02d}/{h.month:02d}/{h.year})\n" + msg[msg.index("\n", 3850):msg.index("\n", 6600)] + "\n\n@RepositorioDeFIIs\n@SuperFIIsBot"
                     bot.send_message(usuario, msg2)
+                    msg3 = f"\U0001F6AAFECHAMENTO ({h.day:02d}/{h.month:02d}/{h.year})\n" + msg[msg.index("\n", 6600):] + "\n\n@RepositorioDeFIIs\n@SuperFIIsBot"
+                    bot.send_message(usuario, msg3)
             except:
                 pass
             
@@ -222,18 +225,20 @@ def mensagem_lista_fechamento(fundos, dic):
         msg = "" 
         for f in fundos:
             try:
-                #print(f)
+                print(f)
                 if f in dic and dic[f][0] and dic[f][1]:
                     v, variacao = dic[f]
-                    print("Já lá")
+                    #print("Já lá")
                 else:
-                    v, variacao = get_ticker_variacao(f)
+                    v, variacao = get_ticker_variacao2(f)
                     time.sleep(5)
+                    if not v or v=="0,00":
+                        continue
                     dic[f] = (v, variacao)
-                l = f"{f}: R$ {v:.2f}".replace(".",",")
-                #print(variacao)
+                l = f"{f}: R$ {v}".replace(".",",")
+                print(variacao)
                 if variacao:
-                    l += f" ({variacao}%)"
+                    l += f" ({variacao})"
                     if variacao.startswith("+"):
                         l = "\U0001F7E2" + l
                     elif variacao.startswith("−") or variacao.startswith("-"):
@@ -247,7 +252,7 @@ def mensagem_lista_fechamento(fundos, dic):
             except Exception:
                 pass#traceback.print_exc()
     
-    print(msg)            
+    #print(msg)            
     return msg
 
 def informar_fechamento(fundos, usuario):
@@ -326,6 +331,16 @@ def buscar_documentos2(cnpj, desde=""):
             lista.append(d)
     lista.reverse()
     return lista
+    
+def buscar_ultimo_documento_provento(cnpj):
+    rend = None
+    r = requests.get(f"https://fnet.bmfbovespa.com.br/fnet/publico/pesquisarGerenciadorDocumentosDados?d=1&s=0&l=100&o%5B0%5D%5BdataEntrega%5D=desc&cnpjFundo={cnpj}")
+    for d in r.json()["data"]:
+        tipo = d["tipoDocumento"]
+        #print(datetime.datetime(year=int(de[6:10]), month=int(de[3:5]), day=int(de[0:2]), hour=int(de[11:13])), desde)
+        if tipo.strip() == "Rendimentos e Amortizações":
+            return d;
+    return None
         
 def baixarDocumento(link):
     pass
@@ -522,7 +537,49 @@ def handle_command(message):
             if a["tipoDocumento"] == "Rendimentos e Amortizações":
                 informar_proventos(a, message.from_user.id)
     bot.send_message(message.from_user.id, "https://www.seudinheiro.com/2023/bolsa-dolar/ameaca-de-novo-calote-derruba-cotas-de-cinco-fundos-imobiliarios-na-b3-lvit/")"""
-            
+    try:
+        ticker = message.text.split()[1].strip().upper()
+        val, var = get_ticker_variacao2(ticker)
+        bot.send_message(message.chat.id, str(val)+"\n"+str(var), reply_to_message_id=message.id)
+    except:
+        pass
+    """doc_rend = buscar_ultimo_documento_provento(buscar_cnpj(ticker))
+    if doc_rend:
+        doc_rend["codigoFII"] = ticker
+        informar_proventos(doc_rend, message.from_user.id)
+    else:
+        bot.send_message(message.chat.id, f'Não encontramos informações sobre a última distribuição deste fundo.', reply_to_message_id=message.id)"""
+
+
+
+@bot.message_handler(commands=["rend"])
+def handle_command(message):
+    #cmd = message.text.split()[0]
+    #print(message)
+    print(message.from_user.first_name, message.text)
+    if len(message.text.strip().split()) == 2:
+        ticker = message.text.split()[1].strip().upper()
+        if not ticker in base.colunas():
+            if ticker in ("BODB11", "BDIF11", "CPTI11", "BIDB11", "IFRA11", "KDIF11", "OGIN11", "RBIF11", "CDII11", "JURO11", "SNID11", "XPID11"):
+                bot.send_message(message.chat.id, f"Desculpe, mas no momento não temos a opção ver os proventos de FI-Infras.", reply_to_message_id=message.id)
+                return
+            bot.send_message(message.chat.id, f"Não encontramos em nossa base de dados o fundo imobiliário {ticker}.", reply_to_message_id=message.id)
+            return
+        doc_rend = buscar_ultimo_documento_provento(buscar_cnpj(ticker))
+        if doc_rend:
+            doc_rend["codigoFII"] = ticker
+            informar_proventos(doc_rend, message.from_user.id)
+        else:
+            bot.send_message(message.chat.id, f'Não encontramos informações sobre a última distribuição de proventos deste fundo.', reply_to_message_id=message.id)    
+    elif len(message.text.strip().split()) == 1:
+        bot.send_message(message.chat.id, f'Informe o código de negociação do fundo imobiliário que você deseja ver informações sobre a última distribuições de proventos.\nEx.: "/rend URPR11".', reply_to_message_id=message.id)
+    else:
+        bot.send_message(message.chat.id, f'Uso incorreto. Para ver informações sobre a última distribuição de proventos de um fundo, envie /rend CODIGO_FUNDO.\nEx.: "/rend URPR11".', reply_to_message_id=message.id)
+
+
+
+
+
             
 @bot.message_handler(commands=["docs", "ultimos_documentos"])
 def handle_command(message):
@@ -667,6 +724,35 @@ def get_variacao(ticker):
             pass
     
     return valor
+
+def get_ticker_variacao2(ticker):
+    valor = None
+    variacao = ""
+    if ticker.upper() == "KNHF11":
+        return (valor, variacao)
+    headers = {'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:108.0) Gecko/20100101 Firefox/108.0'} 
+    url = "https://statusinvest.com.br/fundos-imobiliarios/" + ticker
+    try:
+        res = requests.get(url, headers=headers)
+        html_page = res.text       
+        soup = BeautifulSoup(html_page, 'html.parser')
+        valor = soup.select_one('.special strong').text.strip()
+        variacao = soup.select_one('.special b').text.strip();
+        if len(variacao) > 0 and not variacao.startswith("-") and variacao != "0,00%":
+            variacao = "+" + variacao
+    except:
+        try:
+            res = requests.get(url, headers=headers)
+            html_page = res.text       
+            soup = BeautifulSoup(html_page, 'html.parser')
+            valor = soup.select_one('.special strong').text.strip()
+            variacao = soup.select_one('.special b').text.strip()
+            if len(variacao) > 0 and not variacao.startswith("-") and variacao != "0,00%":
+                variacao = "+" + variacao
+        except:
+            pass
+    
+    return (valor, variacao)
     
 def get_ticker_variacao(ticker):
     valor = None
@@ -796,7 +882,6 @@ def verificar():
                             informar_proventos(doc, seg)
                 except:
                     ultima_busca[f] = h
-                    print("Erro estranho!")
                     
 def verificar2():
     for f in base.colunas():
@@ -848,13 +933,13 @@ def verificacao_periodica():
 
     while True:
         try:
-            print("Verificando...")
             Thread(target=verificar, daemon=True).start()
             h = agora()
             if is_dia_util(h.date()) and h.hour > 7 and h.hour < 22:
                 time.sleep(600)
             else:
                 time.sleep(3600)
+                print("Verificando...")
         except:
             pass
           
@@ -914,7 +999,7 @@ tz_info = agora().tzinfo
       
 ultima_busca = {}
 for f in base.colunas():
-    ultima_busca[f] = agora() - datetime.timedelta(minutes=35)
+    ultima_busca[f] = agora()
        
 print("Robô iniciado.")
 #print(fiis_cnpj)
