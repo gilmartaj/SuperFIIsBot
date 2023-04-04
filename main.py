@@ -736,6 +736,7 @@ def get_ticker_variacao2(ticker):
         res = requests.get(url, headers=headers)
         html_page = res.text       
         soup = BeautifulSoup(html_page, 'html.parser')
+        print(soup.prettify())
         valor = soup.select_one('.special strong').text.strip()
         variacao = soup.select_one('.special b').text.strip();
         if len(variacao) > 0 and not variacao.startswith("-") and variacao != "0,00%":
