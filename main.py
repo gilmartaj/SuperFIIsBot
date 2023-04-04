@@ -542,7 +542,7 @@ def handle_command(message):
         val, var = get_ticker_variacao2(ticker)
         bot.send_message(message.chat.id, str(val)+"\n"+str(var), reply_to_message_id=message.id)
     except:
-        pass
+        traceback.print_exc()
     """doc_rend = buscar_ultimo_documento_provento(buscar_cnpj(ticker))
     if doc_rend:
         doc_rend["codigoFII"] = ticker
