@@ -1008,7 +1008,7 @@ print("Robô iniciado.")
 #print(fiis_cnpj)
 
 #Thread(target=thread_teste).start()
-Thread(target=thread_fechamento, daemon=True).start()
+#Thread(target=thread_fechamento, daemon=True).start()
 Thread(target=verificacao_periodica, daemon=True).start()
 bot.set_my_commands([telebot.types.BotCommand(comando[0], comando[1]) for comando in comandos])
 
