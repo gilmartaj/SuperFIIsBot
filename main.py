@@ -741,6 +741,7 @@ def get_ticker_variacao2(ticker):
         if len(variacao) > 0 and not variacao.startswith("-") and variacao != "0,00%":
             variacao = "+" + variacao
     except:
+        traceback.print_exc()
         try:
             res = requests.get(url, headers=headers)
             html_page = res.text       
