@@ -730,7 +730,9 @@ def get_ticker_variacao2(ticker):
     variacao = ""
     if ticker.upper() == "KNHF11":
         return (valor, variacao)
-    headers = {'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:108.0) Gecko/20100101 Firefox/108.0'} 
+    headers = {'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:108.0) Gecko/20100101 Firefox/108.0',"Accept":
+	"text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8", "Cookie":
+	_"adasys=3e862075-4c8c-49e1-93c7-1e75e21c45ae; G_ENABLED_IDPS=google; .StatusInvest=eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJBY2NvdW50SWQiOiI3MDA3MDgiLCJOYW1lIjoiR2lsbWFyIErDum5pb3IiLCJFbWFpbCI6ImdpbC5pbnZlc3QyMDAwQGdtYWlsLmNvbSIsIkludGVyZmFjZVR5cGUiOiJXZWIiLCJJcCI6Ijo6ZmZmZjoxMC4xMDAuMTAuMTM3IiwibmJmIjoxNjc2MDc3MjAyLCJleHAiOjE2NzYxNjM2MDIsImlhdCI6MTY3NjA3NzIwMiwiaXNzIjoiU3RhdHVzSW52ZXN0IiwiYXVkIjoiU3RhdHVzSW52ZXN0In0.3YIm9kn_P0S9NCdOPW6u0XMqW2oSO3Tqq6YB1VqhZgsooFHbv-vVX7LhyxbUsef5FO114ayuIo8WRAexVoQiYg; cf_c…6e303; pg_beacon=1; pg_mm2_cookie_a=442aa234-91da-4e1f-8b09-4a6e8bab2a5b; pg_custom_timeout=; pg_ip=200.138.95.195; __gads=ID=dc2597c7fd9f4ab0:T=1678328290:S=ALNI_Maj7EbUDAFfUzLPbSrxKhAJnpXcEQ; __gpi=UID=000009ee1bd3c7a2:T=1678328290:RT=1679361511:S=ALNI_MZMgqqiz0sL3c22WoYfAIPq4xOOWg; FCNEC=%5B%5B%22AKsRol_Kwcb8pLEVabwABFpJhz-5AOlQ0lLltmROxhzjC3Q4PBApQu8q81nCg8tkzLV0ctmUIwqbJGA9ts4XffoTqgMr2Cb3dWQHQPejk_6hTYKSp8r5Szl-vfBVq1PMj4WdMwqaWd-z1EIlD7ROwjhMlbhyWdMAoQ%3D%3D%22%5D%2Cnull%2C%5B%5D%5D; .StatusAdThin=1"} 
     url = "https://statusinvest.com.br/fundos-imobiliarios/" + ticker
     try:
         res = requests.get(url, headers=headers)
