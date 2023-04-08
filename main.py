@@ -32,6 +32,7 @@ import traceback
 client = gspread.service_account(filename='superfiisbot-9f67df851d9a.json')
 
 sheet = client.open("SeguidoresFIIs").sheet1
+sheet_infra = client.open("SeguidoresFI-Infras").sheet1
 
 telebot.apihelper.SESSION_TIME_TO_LIVE = 60 * 15
 
@@ -61,6 +62,8 @@ comandos = [
 fiis_cnpj = pd.read_csv("fiis_cnpj.csv", dtype={"Código":str, "CNPJ":str}).dropna()
 
 #bot = telebot.TeleBot("5747986812:AAG7f__d2EsGA-OcjV3_dquK7pA7KIqb-so")    
+
+
 
 class BaseCache:
     def __init__(self, base): #planilha do tipo dict
@@ -127,8 +130,9 @@ class BaseCache:
         return seguidores
  
 base = BaseCache(sheet)
+base_infra = BaseCache(sheet_infra)
 
-def informar_proventos(doc, usuario):
+def informar_proventos(doc, usuarios):
 #422748
     r = requests.get(f'https://fnet.bmfbovespa.com.br/fnet/publico/downloadDocumento?id={doc["id"]}', headers={"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"})
 
@@ -188,7 +192,8 @@ def informar_proventos(doc, usuario):
         
         
     mensagem += "\n\n@RepositorioDeFIIs"
-    bot.send_message(usuario, mensagem)
+    for u in usuarios:
+        bot.send_message(u, mensagem)
 
 def informar_fechamento2():
     dic = {}
@@ -332,6 +337,60 @@ def buscar_documentos2(cnpj, desde=""):
     lista.reverse()
     return lista
     
+
+def buscar_documentos_infra(token, desde=""):
+    r = requests.get(f"https://sistemaswebb3-listados.b3.com.br/fundsProxy/fundsCall/GetListedPreviousDocuments/{token}")
+    #print(f"https://sistemaswebb3-listados.b3.com.br/fundsProxy/fundsCall/GetListedPreviousDocuments/{token}")
+    lista = []
+    results = r.json()["results"]
+    for d in results:
+        de = d["date"]
+        #print(datetime.datetime(year=int(de[0:4]), month=int(de[5:7]), day=int(de[8:10]), hour=int(de[11:13]), minute=int(de[14:16])), desde)
+        if datetime.datetime(year=int(de[0:4]), month=int(de[5:7]), day=int(de[8:10]), hour=int(de[11:13]), minute=int(de[14:16]), tzinfo=tz_info) < desde:
+            break
+        lista.append(d)
+        print(d)
+    lista.reverse()
+    return lista
+    
+async def enviar_documento_1(usuario, nome_doc, caption,client):
+    
+        with open(nome_doc, "rb") as fp:
+            z = await client.send_file(usuario, file=fp, caption=caption)
+            return z.file.id
+            
+def compartilhar_documento_enviado(usuarios, file_id, caption):
+    for u in usuarios:
+            bot.send_document(
+            u,
+            file_id,
+            caption=caption
+            )
+
+def baixar_documento_1(link, nome_doc, cabecalhos={}):
+    with open(nome_doc, "wb") as f:
+        f.write(requests.get(link, headers=cabecalhos).content)
+            
+def env_infra(cod_fundo, doc, usuarios):
+    if len(usuarios) < 1:
+        return
+      
+    nome_doc = doc["name"].replace("/","_") + ".pdf"
+    link = f'https://bvmf.bmfbovespa.com.br/sig/FormConsultaPdfDocumentoFundos.asp?strSigla={cod_fundo[:-2]}&strData={doc["date"]}'
+    baixar_documento_1(link, nome_doc, cabecalhos={"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"})
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    file_id = 0
+    caption = cod_fundo + " - " + doc["name"] + "\n\n@RepositorioDeFIIs\n@SuperFiisBot"
+    with TelegramClient("bot", "14595347", "ff2597a5880da0bdd36363b2c8a3aa94").start(bot_token="5747986812:AAG7f__d2EsGA-OcjV3_dquK7pA7KIqb-so") as client:
+        x = loop.run_until_complete(asyncio.wait([enviar_documento_1(int(usuarios[0]), nome_doc, caption,client)]))
+        file_id = list(x[0])[0].result()
+    os.remove(nome_doc)
+    print(file_id)
+    if len(usuarios) > 1:
+        compartilhar_documento_enviado(usuarios[1:], file_id, caption)
+
+    
 def buscar_ultimo_documento_provento(cnpj):
     rend = None
     r = requests.get(f"https://fnet.bmfbovespa.com.br/fnet/publico/pesquisarGerenciadorDocumentosDados?d=1&s=0&l=100&o%5B0%5D%5BdataEntrega%5D=desc&cnpjFundo={cnpj}")
@@ -339,7 +398,7 @@ def buscar_ultimo_documento_provento(cnpj):
         tipo = d["tipoDocumento"]
         #print(datetime.datetime(year=int(de[6:10]), month=int(de[3:5]), day=int(de[0:2]), hour=int(de[11:13])), desde)
         if tipo.strip() == "Rendimentos e Amortizações":
-            return d;
+            return d
     return None
         
 def baixarDocumento(link):
@@ -511,7 +570,7 @@ open(local_file, "wb").write(requests.get(remote_url, headers={"Accept": "text/h
 
 @bot.message_handler(commands=["teste"])
 def handle_command(message):
-    print(message)
+    print(message.text)
     #with open('/home/gilmartaj/SuperFIIs/Relatório Gerencial 02-2023 - FII ANHANGUERA EDUCACIONAL.pdf', 'rb') as f:
     """bot.send_document(
     message.from_user.id,
@@ -561,14 +620,14 @@ def handle_command(message):
         ticker = message.text.split()[1].strip().upper()
         if not ticker in base.colunas():
             if ticker in ("BODB11", "BDIF11", "CPTI11", "BIDB11", "IFRA11", "KDIF11", "OGIN11", "RBIF11", "CDII11", "JURO11", "SNID11", "XPID11"):
-                bot.send_message(message.chat.id, f"Desculpe, mas no momento não temos a opção ver os proventos de FI-Infras.", reply_to_message_id=message.id)
+                bot.send_message(message.chat.id, f"Desculpe, mas no momento esta função não está disponível para FI-Infras.", reply_to_message_id=message.id)
                 return
             bot.send_message(message.chat.id, f"Não encontramos em nossa base de dados o fundo imobiliário {ticker}.", reply_to_message_id=message.id)
             return
         doc_rend = buscar_ultimo_documento_provento(buscar_cnpj(ticker))
         if doc_rend:
             doc_rend["codigoFII"] = ticker
-            informar_proventos(doc_rend, message.from_user.id)
+            informar_proventos(doc_rend, [message.from_user.id])
         else:
             bot.send_message(message.chat.id, f'Não encontramos informações sobre a última distribuição de proventos deste fundo.', reply_to_message_id=message.id)    
     elif len(message.text.strip().split()) == 1:
@@ -590,9 +649,19 @@ def handle_command(message):
         ticker = message.text.split()[1].strip().upper()
         if not ticker in base.colunas():
             if ticker in ("BODB11", "BDIF11", "CPTI11", "BIDB11", "IFRA11", "KDIF11", "OGIN11", "RBIF11", "CDII11", "JURO11", "SNID11", "XPID11"):
-                bot.send_message(message.chat.id, f"Desculpe, mas no momento não temos a opção ver de documentos de FI-Infras.", reply_to_message_id=message.id)
+                #bot.send_message(message.chat.id, f"Desculpe, mas no momento não temos a opção ver de documentos de FI-Infras.", reply_to_message_id=message.id)
+                bot.send_message(message.chat.id, f"Buscando documentos...")
+                documentos = buscar_documentos_infra(tokens_infra[ticker], agora()-datetime.timedelta(days=30))
+                #print(documentos)
+                if len(documentos) == 0:
+                    bot.send_message(message.chat.id, f"O FII-Infra imobiliário {ticker} não disponibilizaou nenhum documento nos últimos 30 dias.")
+                    return
+                for doc in documentos:
+                    print(ticker, "-", doc["name"])
+                    #doc["codigoFII"] = ticker
+                    env_infra(ticker, doc, [message.from_user.id])
                 return
-            bot.send_message(message.chat.id, f"Não encontramos em nossa base de dados o fundo imobiliário {ticker}.", reply_to_message_id=message.id)
+            bot.send_message(message.chat.id, f"Não encontramos em nossa base de dados o fundo listado {ticker}.", reply_to_message_id=message.id)
             return
         bot.send_message(message.chat.id, f"Buscando documentos...")
         documentos = buscar_documentos2(buscar_cnpj(ticker), datetime.datetime.now() - datetime.timedelta(days=30))
@@ -617,7 +686,7 @@ def handle_command(message):
     print(message.from_user.first_name, message.text)
     if len(message.text.strip().split()) == 2:
         ticker = message.text.split()[1].strip().upper()
-        r = base.inserir(ticker, str(message.from_user.id))
+        r = base.inserir(ticker, str(message.chat.id))
         if r == 0:
             bot.send_message(message.chat.id, f"Parabéns! Agora você receberá todos os documentos e comunicados referentes ao fundo {ticker}.", reply_to_message_id=message.id)
         elif r == 1:
@@ -725,27 +794,35 @@ def get_variacao(ticker):
     
     return valor
 
+proxies = {'http': 'http://200.187.70.223:3128',
+'https': 'http://200.187.70.223:3128'
+}
 def get_ticker_variacao2(ticker):
     valor = None
     variacao = ""
     if ticker.upper() == "KNHF11":
         return (valor, variacao)
-    headers = {'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/111.0',"Accept":
-	"text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8", "Cookie": "_adasys=3e862075-4c8c-49e1-93c7-1e75e21c45ae; G_ENABLED_IDPS=google; .StatusInvest=eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJBY2NvdW50SWQiOiI3MDA3MDgiLCJOYW1lIjoiR2lsbWFyIErDum5pb3IiLCJFbWFpbCI6ImdpbC5pbnZlc3QyMDAwQGdtYWlsLmNvbSIsIkludGVyZmFjZVR5cGUiOiJXZWIiLCJJcCI6Ijo6ZmZmZjoxMC4xMDAuMTAuMTM3IiwibmJmIjoxNjc2MDc3MjAyLCJleHAiOjE2NzYxNjM2MDIsImlhdCI6MTY3NjA3NzIwMiwiaXNzIjoiU3RhdHVzSW52ZXN0IiwiYXVkIjoiU3RhdHVzSW52ZXN0In0.3YIm9kn_P0S9NCdOPW6u0XMqW2oSO3Tqq6YB1VqhZgsooFHbv"} 
+    headers = {'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/111.0','Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8'} 
+    
     url = "https://statusinvest.com.br/fundos-imobiliarios/" + ticker
     try:
-        res = requests.get(url, headers=headers)
+
+        res = requests.get(url, headers=headers, proxies=proxies, verify=False)
         html_page = res.text       
         soup = BeautifulSoup(html_page, 'html.parser')
-        print(soup.prettify())
+        #print(soup.prettify())
         valor = soup.select_one('.special strong').text.strip()
         variacao = soup.select_one('.special b').text.strip();
         if len(variacao) > 0 and not variacao.startswith("-") and variacao != "0,00%":
             variacao = "+" + variacao
     except:
-        traceback.print_exc()
+        #traceback.print_exc()
+        time.sleep(5)
         try:
-            res = requests.get(url, headers=headers)
+        #    proxies = {'http': 'http://200.187.70.223:3128',
+        #'https': 'http://200.187.70.223:3128'
+        #}
+            res = requests.get(url, headers=headers,proxies=proxies,verify=False)
             html_page = res.text       
             soup = BeautifulSoup(html_page, 'html.parser')
             valor = soup.select_one('.special strong').text.strip()
@@ -880,9 +957,11 @@ def verificar():
                         seg = int(seg)
                         env(doc, seg)
                     if doc["tipoDocumento"] == "Rendimentos e Amortizações":
-                        for seg in seguidores:
-                            seg = int(seg)
-                            informar_proventos(doc, seg)
+                        #for seg in seguidores:
+                            #seg = int(seg)
+                       informar_proventos(doc, seguidores)
+                    elif "Informe Mensal Estruturado" in doc["tipoDocumento"]:
+                        informar_atualizacao_patrimonial(doc, seguidores)
                 except:
                     ultima_busca[f] = h
                     
@@ -911,9 +990,9 @@ def verificar2():
                 try:
                     env(doc, seguidores)
                     if doc["tipoDocumento"] == "Rendimentos e Amortizações":
-                        for seg in seguidores:
-                            seg = int(seg)
-                            informar_proventos(doc, seg)
+                        informar_proventos(doc, [seguidores])
+                    elif "Informe Mensal Estruturado" in doc["tipoDocumento"]:
+                        informar_atualizacao_patrimonial(doc, seg)
                 except:
                     ultima_busca[f] = h
                     
@@ -990,6 +1069,18 @@ def thread_fechamento():
         except:
             pass
         parada += datetime.timedelta(days=1)
+
+def convv(v):
+    if v >= 1000000000:
+        return f"R$ {round(v // 10000000 / 100, 2)} bi".replace(".", ",")
+    elif v >= 10000000:
+        return f"R$ {round(v // 100000 / 10, 1)} M".replace(".", ",")
+    elif v >= 1000000:
+        return f"R$ {round(v // 10000 / 100, 2)} M".replace(".", ",")
+    elif v >= 10000:
+        return f"R$ {round(v // 100 / 10, 1)} mil".replace(".", ",")
+    else:
+        return f"R$ {round(v, 2):.2f} ".replace(".", ",")
         
 def thread_teste():
     docs = buscar_documentos(buscar_cnpj("FAED11"), desde=agora()-datetime.timedelta(days=30))  
@@ -1002,14 +1093,160 @@ tz_info = agora().tzinfo
       
 ultima_busca = {}
 for f in base.colunas():
-    ultima_busca[f] = agora() - datetime.timedelta(hours=1, minutes=30)
+    ultima_busca[f] = agora()
+    
+ultima_busca_infra = {}
+for f in base_infra.colunas():
+    ultima_busca_infra[f] = agora()# - datetime.timedelta(days=30)
+    
+def verificar_infra():
+    #print("Verificando...")
+    for f in base_infra.colunas():
+        seguidores = base_infra.buscar_seguidores(f)
+        if len(seguidores) > 0:
+            #print(f, len(seguidores))
+            h = ultima_busca_infra[f]
+            ultima_busca_infra[f] = agora()
+            documentos = []
+            try:
+                documentos = buscar_documentos_infra(tokens_infra[f], h)
+            except:
+                pass
+            
+            for doc in documentos:
+                try:
+                    print(f,doc)
+                    env_infra(f, doc, seguidores)
+                    #env_infra(f, doc, seguidores)
+                except:
+                    ultima_busca_infra[f] = h
+
+def verificacao_periodica_infra():
+    time.sleep(900)
+
+    while True:
+        try:
+            Thread(target=verificar_infra, daemon=True).start()
+            h = agora()
+            if is_dia_util(h.date()) and h.hour > 7 and h.hour < 22:
+                time.sleep(3600)
+            else:
+                time.sleep(10000)
+                print("Verificando infra...")
+        except:
+            pass
+   
+tokens_infra = {
+    "BDIF11": "eyJpZGVudGlmaWVyRnVuZCI6IkJESUYiLCJ0eXBlIjoxLCJwYWdlTnVtYmVyIjoxLCJwYWdlU2l6ZSI6MjB9",
+    "BIDB11": "eyJpZGVudGlmaWVyRnVuZCI6IkJJREIiLCJ0eXBlIjoxLCJwYWdlTnVtYmVyIjoxLCJwYWdlU2l6ZSI6MjB9",
+    "BODB11": "eyJpZGVudGlmaWVyRnVuZCI6IkJPREIiLCJ0eXBlIjoxLCJwYWdlTnVtYmVyIjoxLCJwYWdlU2l6ZSI6MjB9",
+    "CDII11": "eyJpZGVudGlmaWVyRnVuZCI6IkNESUkiLCJ0eXBlIjoxLCJwYWdlTnVtYmVyIjoxLCJwYWdlU2l6ZSI6MjB9",
+    "CPTI11": "eyJpZGVudGlmaWVyRnVuZCI6IkNQVEkiLCJ0eXBlIjoxLCJwYWdlTnVtYmVyIjoxLCJwYWdlU2l6ZSI6MjB9",
+    "IFRA11": "eyJpZGVudGlmaWVyRnVuZCI6IklGUkEiLCJ0eXBlIjoxLCJwYWdlTnVtYmVyIjoxLCJwYWdlU2l6ZSI6MjB9",
+    "JURO11": "eyJpZGVudGlmaWVyRnVuZCI6IkpVUk8iLCJ0eXBlIjoxLCJwYWdlTnVtYmVyIjoxLCJwYWdlU2l6ZSI6MjB9",
+    "KDIF11": "eyJpZGVudGlmaWVyRnVuZCI6IktESUYiLCJ0eXBlIjoxLCJwYWdlTnVtYmVyIjoxLCJwYWdlU2l6ZSI6MjB9",
+    "OGIN11": "eyJpZGVudGlmaWVyRnVuZCI6Ik9HSU4iLCJ0eXBlIjoxLCJwYWdlTnVtYmVyIjoxLCJwYWdlU2l6ZSI6MjB9",
+    "RBIF11": "eyJpZGVudGlmaWVyRnVuZCI6IlJCSUYiLCJ0eXBlIjoxLCJwYWdlTnVtYmVyIjoxLCJwYWdlU2l6ZSI6MjB9",
+    "SNID11": "eyJpZGVudGlmaWVyRnVuZCI6IlNOSUQiLCJ0eXBlIjoxLCJwYWdlTnVtYmVyIjoxLCJwYWdlU2l6ZSI6MjB9",
+    "XPID11": "eyJpZGVudGlmaWVyRnVuZCI6IlhQSUQiLCJ0eXBlIjoxLCJwYWdlTnVtYmVyIjoxLCJwYWdlU2l6ZSI6MjB9",
+}
+    
        
 print("Robô iniciado.")
 #print(fiis_cnpj)
 
+def informar_atualizacao_patrimonial(doc, usuarios):
+#422748
+    r = requests.get(f'https://fnet.bmfbovespa.com.br/fnet/publico/downloadDocumento?id={doc["id"]}', headers={"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"})
+
+    v_atual = 0
+
+    try:
+        v_atual = get_ticker_value(doc["codigoFII"])
+    except:
+        pass
+
+    dados = xmltodict.parse(r.content)
+
+    mensagem = "Atualização patrimonial:"
+    #mensagem += f'FII: {doc["codigoFII"]}'
+    mensagem += f'\n\n\U0001F3E0Código: {doc["codigoFII"]}'
+    
+    competencia = dados["DadosEconomicoFinanceiros"]["DadosGerais"]["Competencia"]
+    if re.match(r"^\d{4}-\d{2}-\d{2}$",competencia):
+        competencia = competencia[5:7]+"/"+competencia[0:4]
+        print("Comp")
+        
+    mensagem += f"\n\U0001F5D3Competência: {competencia}\n"
+    
+    d = dados["DadosEconomicoFinanceiros"]["InformeMensal"]["Resumo"]
+    #print(d)
+    pl = float(d["PatrimonioLiquido"])
+    valz = round(float(d["RentEfetivaMensal"]["RentPatrimonialMes"])*100,5)
+    vp = float(d["ValorPatrCotas"])
+    pvp = round(v_atual/vp,2)
+    
+    ativo = float(d["Ativo"])
+    d = dados["DadosEconomicoFinanceiros"]["InformeMensal"]["InformacoesPassivo"]
+    dividas = 0.00
+    try:
+        dividas += float(d["ObrigacoesAquisicaoImov"])
+    except:
+        pass
+    try:
+        dividas += float(d["ObrigacoesSecRecebiveis"])
+    except:
+        pass
+    alavancagem = dividas/ativo
+    
+    mensagem += f'\n\U0001F4CAPat. líq.: {convv(pl)}'
+    
+    if valz > 0:
+        valz = f"+{valz}%".replace(".",",")
+        mensagem += f'\n\U0001F4C8Variação: {valz}'
+    elif valz < 0:
+        valz = f"{valz}%".replace(".",",")
+        mensagem += f'\n\U0001F4C9Variação: {valz}'
+    else:
+        valz = f"0,00%"
+        mensagem += f'\n\U0001F4C9Variação: {valz}'
+        
+    vp = f'R$ {round(vp*100//1/100,2)}'.replace(".",",")
+    
+    pvp = f"{pvp:.2f}".replace(".",",")
+    
+    mensagem += f'\n\U0001F4B5VP/cota: {vp}'
+    if v_atual:
+        mensagem += f'\n\u2797P/VP atual: {pvp}'
+    mensagem += f'\n\u26A0Alavancagem: {alavancagem:.2%}'.replace(".",",")
+        
+    #print(mensagem)
+    
+    #print(convv(pl))
+    #print(valz)
+    #print(vp)
+    #print(pvp)
+        
+    mensagem += "\n\n@RepositorioDeFIIs"
+    for u in usuarios:
+        bot.send_message(u, mensagem)
+
 #Thread(target=thread_teste).start()
-#Thread(target=thread_fechamento, daemon=True).start()
+Thread(target=thread_fechamento, daemon=True).start()
 Thread(target=verificacao_periodica, daemon=True).start()
+Thread(target=verificacao_periodica_infra, daemon=True).start()
 bot.set_my_commands([telebot.types.BotCommand(comando[0], comando[1]) for comando in comandos])
 
 bot.infinity_polling(timeout=200, long_polling_timeout = 5)
+
+#docs = buscar_documentos_infra(tokens_infra["JURO11"], agora()-datetime.timedelta(days=10))
+#print(len(docs))
+#env_infra("JURO11", docs[0], ["556068392","-743953207","556068392"])
+
+"""doc = buscar_ultimo_documento_provento(42888292000190)
+doc["codigoFII"] = "JGPX11"
+informar_proventos(doc,["556068392"])
+doc = buscar_documentos(buscar_cnpj("APTO11"), agora()-datetime.timedelta(days=25))[0]
+doc["codigoFII"] = "APTO11"
+print(doc)
+informar_atualizacao_patrimonial(doc, ["556068392"])"""
