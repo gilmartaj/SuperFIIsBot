@@ -1197,9 +1197,13 @@ def informar_atualizacao_patrimonial(doc, usuarios):
         dividas += float(d["ObrigacoesSecRecebiveis"])
     except:
         pass
+    try:
+        dividas += float(d["OutrosValoresPagar"])
+    except:
+        pass
     alavancagem = dividas/ativo
     
-    mensagem += f'\n\U0001F4CAPat. líq.: {convv(pl)}'
+    mensagem += f'\n\U0001F4CAPat. líquido: {convv(pl)}'
     
     if valz > 0:
         valz = f"+{valz}%".replace(".",",")
