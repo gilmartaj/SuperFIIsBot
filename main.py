@@ -1052,7 +1052,7 @@ def is_dia_util(data):
     
 def thread_fechamento():
     h = agora()
-    parada = datetime.datetime(h.year, h.month, h.day, 18, 30, tzinfo=h.tzinfo)
+    parada = datetime.datetime(h.year, h.month, h.day, 18, 0, tzinfo=h.tzinfo)
     if h.hour >= 18:
         parada += datetime.timedelta(days=1)
         
@@ -1236,7 +1236,7 @@ def informar_atualizacao_patrimonial(doc, usuarios):
         bot.send_message(u, mensagem)
 
 #Thread(target=thread_teste).start()
-Thread(target=thread_fechamento, daemon=True).start()
+#Thread(target=thread_fechamento, daemon=True).start()
 Thread(target=verificacao_periodica, daemon=True).start()
 Thread(target=verificacao_periodica_infra, daemon=True).start()
 bot.set_my_commands([telebot.types.BotCommand(comando[0], comando[1]) for comando in comandos])
