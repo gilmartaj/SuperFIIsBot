@@ -615,7 +615,7 @@ def handle_command(message):
 def handle_command(message):
     #cmd = message.text.split()[0]
     #print(message)
-    print(message.from_user.first_name, message.text)
+    print(agora(), message.from_user.first_name, message.text)
     if len(message.text.strip().split()) == 2:
         ticker = message.text.split()[1].strip().upper()
         if not ticker in base.colunas():
@@ -644,7 +644,7 @@ def handle_command(message):
 def handle_command(message):
     cmd = message.text.split()[0]
     #print(message)
-    print(message.from_user.first_name, message.text)
+    print(agora(), message.from_user.first_name, message.text)
     if len(message.text.strip().split()) == 2:
         ticker = message.text.split()[1].strip().upper()
         if not ticker in base.colunas():
@@ -683,7 +683,7 @@ def handle_command(message):
 @bot.message_handler(commands=["seguir"])
 def handle_command(message):
     #print(message)
-    print(message.from_user.first_name, message.text)
+    print(agora(), message.from_user.first_name, message.text)
     if len(message.text.strip().split()) == 2:
         ticker = message.text.split()[1].strip().upper()
         r = base.inserir(ticker, str(message.chat.id))
@@ -702,7 +702,7 @@ def handle_command(message):
 @bot.message_handler(commands=["desinscrever"])
 def handle_command(message):
     #print(message)
-    print(message.from_user.first_name, message.text)
+    print(agora(), message.from_user.first_name, message.text)
     if len(message.text.split()) != 2:
         bot.send_message(message.chat.id, 'Uso incorreto. Para deixar de seguir um fundo envie /desinscrever CODIGO_FUNDO. Ex.: "/desinscrever URPR11"', reply_to_message_id=message.id)
         return
@@ -874,7 +874,7 @@ def get_ticker_variacao(ticker):
 @bot.message_handler(regexp=r"(\s)*/cotacao.* [A-Za-z]{4}11")
 def handle_command(message):
     try:
-        print(message.from_user.first_name, message.text)
+        pprint(agora(), message.from_user.first_name, message.text)
         ticker = message.text.split()[1].strip()
         enviada = bot.send_message(message.chat.id, "Buscando...", reply_to_message_id=message.id)
         valor = get_ticker_value(ticker)
@@ -885,9 +885,9 @@ def handle_command(message):
         
 @bot.message_handler(commands=["cnpj"])
 def handle_command(message):
+    print(agora(), message.from_user.first_name, message.text)
     if len(message.text.strip().split()) == 2:
         try:
-            print(message.from_user.first_name, message.text)
             ticker = message.text.split()[1].strip()
             cnpj = buscar_cnpj(ticker.upper())
             bot.send_message(message.chat.id, cnpj, reply_to_message_id=message.id)
@@ -907,7 +907,7 @@ def handle_command(message):
     #print(message)
     #bot.forward_message("-743953207", message.chat.id, message.id)
     bot.send_message("-743953207", f"{message.from_user.first_name} ({message.from_user.id}) {message.text}")
-    print(message.from_user.first_name, message.from_user.id, message.text)
+    print(agora(), message.from_user.first_name, message.from_user.id, message.text)
     bot.send_message(message.from_user.id, "Seja bem-vindo ao @SuperFIIsBot!!!\n\n")
     bot.send_message(message.from_user.id, "Segue a lista de comandos disponíveis e suas respectivas descrições:\n\n"+mensagem_instrucoes())
     bot.send_message(message.from_user.id, "Em caso de dúvidas ou sugestões, entre em contato diretamente com o desenvolvedor @gilmartaj, ficaremos felizes em ajudar!")
@@ -915,17 +915,17 @@ def handle_command(message):
 @bot.message_handler(commands=["ajuda"])
 def handle_command(message):
     #print(message)
-    print(message.from_user.first_name, message.text)
+    print(agora(), message.from_user.first_name, message.text)
     bot.send_message(message.from_user.id, "Segue a lista de comandos disponíveis e suas respectivas descrições:\n\n"+mensagem_instrucoes()+"\nEm caso de dúvidas ou sugestões, entre em contato diretamente com o desenvolvedor @gilmartaj", reply_to_message_id=message.id)
     
 @bot.message_handler(commands=["doacao"])
 def handle_command(message):
-    print(message)
+    print(agora(), message.from_user.first_name, message.from_user.id, message.text)
     bot.send_message(message.from_user.id, "Além do tempo de desenvolvimento, manter o bot rodando exige um servidor, e isso tem um custo. Se o bot é útil para você e não lhe fazem falta alguns centavos, ajude o projeto doando a partir de 1 centavo para a Chave Pix de e-mail do desenvolvedor: gil77891@gmail.com\n\nObs.: Não use este e-mail para contato, isto pode ser feito aqui mesmo pelo Telegram, enviando uma mensagem para @gilmartaj.")
     
 @bot.message_handler(commands=["contato"])
 def handle_command(message):
-    print(message)
+    print(agora(), message.from_user.first_name, message.from_user.id, message.text)
     bot.send_message(message.from_user.id, "Para dúvidas, sugestões e reportes de erros, envie uma mensagem direta para o desenvolvedor @gilmartaj, aqui mesmo pelo Telegram.")
 
 
@@ -953,9 +953,12 @@ def verificar():
                 
                 doc["codigoFII"] = f
                 try:
-                    for seg in seguidores:
-                        seg = int(seg)
-                        env(doc, seg)
+                    try:
+                        for seg in seguidores:
+                            seg = int(seg)
+                            env(doc, seg)
+                    except:
+                        ultima_busca[f] = h
                     if doc["tipoDocumento"] == "Rendimentos e Amortizações":
                         #for seg in seguidores:
                             #seg = int(seg)
@@ -963,7 +966,7 @@ def verificar():
                     elif "Informe Mensal Estruturado" in doc["tipoDocumento"]:
                         informar_atualizacao_patrimonial(doc, seguidores)
                 except:
-                    ultima_busca[f] = h
+                    traceback.print_exc()
                     
 def verificar2():
     for f in base.colunas():
@@ -1097,7 +1100,7 @@ for f in base.colunas():
     
 ultima_busca_infra = {}
 for f in base_infra.colunas():
-    ultima_busca_infra[f] = agora()# - datetime.timedelta(days=30)
+    ultima_busca_infra[f] = agora() - datetime.timedelta(days=1)
     
 def verificar_infra():
     #print("Verificando...")
@@ -1132,7 +1135,7 @@ def verificacao_periodica_infra():
                 time.sleep(3600)
             else:
                 time.sleep(10000)
-                print("Verificando infra...")
+            print("Verificando infra...", agora())
         except:
             pass
    
