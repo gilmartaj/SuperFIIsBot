@@ -874,7 +874,7 @@ def get_ticker_variacao(ticker):
 @bot.message_handler(regexp=r"(\s)*/cotacao.* [A-Za-z]{4}11")
 def handle_command(message):
     try:
-        pprint(agora(), message.from_user.first_name, message.text)
+        print(agora(), message.from_user.first_name, message.text)
         ticker = message.text.split()[1].strip()
         enviada = bot.send_message(message.chat.id, "Buscando...", reply_to_message_id=message.id)
         valor = get_ticker_value(ticker)
