@@ -482,6 +482,8 @@ def env(doc, usuario):
 async def enviar_documento(doc, usuario, client):
     #doc_id 430265
     tipo_doc = doc["tipoDocumento"].replace("/", "-") if doc["tipoDocumento"].strip() != "" else doc["categoriaDocumento"]
+    if doc["tipoDocumento"].strip() == "AGO" or doc["tipoDocumento"].strip() == "AGE":
+        tipo_doc = doc["categoriaDocumento"].replace("/", "-").strip() + " - " + doc["tipoDocumento"].replace("/", "-").strip() + " - " + doc["especieDocumento"].replace("/", "-").strip()
     if tipo_doc == "Relatório Gerencial":
         data_ref = re.search(r"\d\d/\d\d\d\d", doc["dataReferencia"])
     else:
