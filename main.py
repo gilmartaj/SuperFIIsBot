@@ -570,6 +570,10 @@ local_file = f'{r.json()["data"][1]["tipoDocumento"]} {r.json()["data"][1]["data
 open(local_file, "wb").write(requests.get(remote_url, headers={"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"}).content)
 """
 
+@bot.message_handler(commands=["testevar"])
+def handle_command(message):
+    print(os.getenv(message.text.split()[1]))
+
 @bot.message_handler(commands=["teste"])
 def handle_command(message):
     print(message.text)
@@ -1102,7 +1106,7 @@ for f in base.colunas():
     
 ultima_busca_infra = {}
 for f in base_infra.colunas():
-    ultima_busca_infra[f] = agora() - datetime.timedelta(days=1)
+    ultima_busca_infra[f] = agora()# - datetime.timedelta(days=1)
     
 def verificar_infra():
     #print("Verificando...")
