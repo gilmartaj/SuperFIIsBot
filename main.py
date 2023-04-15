@@ -29,15 +29,34 @@ import pytz
 
 import traceback
 
+gspread_credentials = {
+  "type": "service_account",
+  "project_id": os.getenv("gspread_project_id"),
+  "private_key_id": os.getenv("gspread_private_key_id"),
+  "private_key": os.getenv("gspread_private_key"),
+  "client_email": os.getenv("gspread_client_email"),
+  "client_id": os.getenv("gspread_client_id"),
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": os.getenv("gspread_client_x509_cert_url")
+}
+
+#print(gspread_credentials)
+
 client = gspread.service_account(filename='superfiisbot-9f67df851d9a.json')
+#client = gspread.service_account_from_dict(gspread_credentials)
 
 sheet = client.open("SeguidoresFIIs").sheet1
 sheet_infra = client.open("SeguidoresFI-Infras").sheet1
 
 telebot.apihelper.SESSION_TIME_TO_LIVE = 60 * 15
 
-bot_aux = "776412005:AAFQ34LLsWSXeZYsg4wf-TICjYeJxh-9EQM"
-bot_super = "5747986812:AAG7f__d2EsGA-OcjV3_dquK7pA7KIqb-so"
+bot_aux = os.getenv("bot_aux_token")
+bot_super = os.getenv("bot_super_token")
+
+TELETHON_API_ID = os.getenv("telethon_api_id")
+TELETHON_API_HASH = os.getenv("telethon_api_hash")
 
 bot = telebot.TeleBot(bot_super)
 
@@ -60,8 +79,7 @@ comandos = [
     ]
 
 fiis_cnpj = pd.read_csv("fiis_cnpj.csv", dtype={"Código":str, "CNPJ":str}).dropna()
-
-#bot = telebot.TeleBot("5747986812:AAG7f__d2EsGA-OcjV3_dquK7pA7KIqb-so")    
+ 
 
 
 
@@ -382,7 +400,7 @@ def env_infra(cod_fundo, doc, usuarios):
     asyncio.set_event_loop(loop)
     file_id = 0
     caption = cod_fundo + " - " + doc["name"] + "\n\n@RepositorioDeFIIs\n@SuperFiisBot"
-    with TelegramClient("bot", "14595347", "ff2597a5880da0bdd36363b2c8a3aa94").start(bot_token="5747986812:AAG7f__d2EsGA-OcjV3_dquK7pA7KIqb-so") as client:
+    with TelegramClient("bot", TELETHON_API_ID, TELETHON_API_HASH).start(bot_token=bot_super) as client:
         x = loop.run_until_complete(asyncio.wait([enviar_documento_1(int(usuarios[0]), nome_doc, caption,client)]))
         file_id = list(x[0])[0].result()
     os.remove(nome_doc)
@@ -433,7 +451,7 @@ def envio_multiplo_telethon(doc, usuarios):
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     tipo_doc = doc["tipoDocumento"].replace("/", "-") if doc["tipoDocumento"].strip() != "" else doc["categoriaDocumento"]
-    with TelegramClient("bot", "14595347", "ff2597a5880da0bdd36363b2c8a3aa94").start(bot_token="5747986812:AAG7f__d2EsGA-OcjV3_dquK7pA7KIqb-so") as client:
+    with TelegramClient("bot", TELETHON_API_ID, TELETHON_API_HASH).start(bot_token=bot_super) as client:
      with open(f'{tipo_doc}.pdf', "wb") as f:
         f.write(requests.get(f'https://fnet.bmfbovespa.com.br/fnet/publico/exibirDocumento?id={doc["id"]}', headers={"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"}).content)
         loop.run_until_complete(asyncio.wait([ enviar_documento( doc, int(usuarios[0]), client)]))
@@ -472,7 +490,9 @@ def env(doc, usuario):
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             tipo_doc = doc["tipoDocumento"].replace("/", "-") if doc["tipoDocumento"].strip() != "" else doc["categoriaDocumento"]
-            with TelegramClient("bot", "14595347", "ff2597a5880da0bdd36363b2c8a3aa94").start(bot_token="5747986812:AAG7f__d2EsGA-OcjV3_dquK7pA7KIqb-so") as client:
+            if doc["tipoDocumento"].strip() == "AGO" or doc["tipoDocumento"].strip() == "AGE":
+                tipo_doc = doc["categoriaDocumento"].replace("/", "-").strip() + " - " + doc["tipoDocumento"].replace("/", "-").strip() + " - " + doc["especieDocumento"].replace("/", "-").strip()
+            with TelegramClient("bot", TELETHON_API_ID, TELETHON_API_HASH).start(bot_token=bot_super) as client:
              with open(f'{tipo_doc}.pdf', "wb") as f:
                 f.write(requests.get(f'https://fnet.bmfbovespa.com.br/fnet/publico/exibirDocumento?id={doc["id"]}', headers={"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"}).content)
                 loop.run_until_complete(asyncio.wait([ enviar_documento( doc, usuario, client)]))
@@ -512,7 +532,7 @@ async def enviar_documento(doc, usuario, client):
         
             #files = {"document": ff}
             #values = {"chat_id": usuario}
-            #requests.post("http://api.telegram.org/bot5747986812:AAG7f__d2EsGA-OcjV3_dquK7pA7KIqb-so/sendDocument", files=files, data=values)
+            #requests.post(f"http://api.telegram.org/bot{bot_super_token}/sendDocument", files=files, data=values)
             
             #bot.send_document(556068392,open("/home/gilmartaj/SuperFIIs/Documento.pdf", "rb"), timeout=200)
             with open(f'{tipo_doc}.pdf', "rb") as fp:
@@ -558,7 +578,7 @@ def xml_pdf(link):
 
 """r = requests.get("https://fnet.bmfbovespa.com.br/fnet/publico/pesquisarGerenciadorDocumentosDados?d=1&s=0&l=2&o%5B0%5D%5BdataEntrega%5D=desc&cnpjFundo=11179118000145")
 
-bot = telebot.TeleBot("5747986812:AAG7f__d2EsGA-OcjV3_dquK7pA7KIqb-so")
+bot = telebot.TeleBot(bot_super)
 
 print(r.json()["data"][1]["dataEntrega"])
 
