@@ -79,12 +79,8 @@ comandos = [
     ]
 
 fiis_cnpj = pd.read_csv("fiis_cnpj.csv", dtype={"Código":str, "CNPJ":str}).dropna()
-<<<<<<< HEAD
- 
-=======
 fiagros_cnpj = pd.read_csv("fiagros_cnpj.csv", dtype={"Código":str, "CNPJ":str}).dropna()
 fiis_cnpj = pd.concat([fiis_cnpj, fiagros_cnpj])
->>>>>>> 15-04-2023
 
 
 
