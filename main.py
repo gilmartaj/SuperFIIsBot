@@ -47,7 +47,7 @@ gspread_credentials = {
 #client = gspread.service_account(filename='superfiisbot-9f67df851d9a.json')
 client = gspread.service_account_from_dict(gspread_credentials)
 
-sheet = client.open("Teste").sheet1
+sheet = client.open("SeguidoresFIIs").sheet1
 sheet_infra = client.open("SeguidoresFI-Infras").sheet1
 
 telebot.apihelper.SESSION_TIME_TO_LIVE = 60 * 15
@@ -58,7 +58,7 @@ bot_super = os.getenv("bot_super_token")
 TELETHON_API_ID = os.getenv("telethon_api_id")
 TELETHON_API_HASH = os.getenv("telethon_api_hash")
 
-bot = telebot.TeleBot(bot_aux)
+bot = telebot.TeleBot(bot_super)
 
 
 
@@ -67,7 +67,7 @@ comandos = [
     ("ajuda", "Exibe a mensagem de ajuda."),
     ("cnpj", 'Exibe o CNPJ de um FII. Ex.: "/cnpj URPR11".'),
     ("contato", "Exibe informações para contato."),
-    ("cotacao", 'Mostra a cotação de um fundo imobiliário. Ex.: "/cotacao URPR11"'),
+    ("cotacao", 'Mostra a cotação de um fundo. Ex.: "/cotacao URPR11"'),
     ("docs", 'Receba os documentos emitidos pelo fundo nos últimos 30 dias. Ex.: "/docs URPR11"'),
     ("desinscrever", 'Use para deixar de seguir um FII que você segue. Ex.: "/desinscrever URPR11"'),
     ("doacao", "Ajude a manter o projeto vivo doando a partir de 1 centavo. Chave Pix: gil77891@gmail.com"),
@@ -645,7 +645,7 @@ def handle_command(message):
             if ticker in ("BODB11", "BDIF11", "CPTI11", "BIDB11", "IFRA11", "KDIF11", "OGIN11", "RBIF11", "CDII11", "JURO11", "SNID11", "XPID11"):
                 bot.send_message(message.chat.id, f"Desculpe, mas no momento esta função não está disponível para FI-Infras.", reply_to_message_id=message.id)
                 return
-            bot.send_message(message.chat.id, f"Não encontramos em nossa base de dados o fundo imobiliário {ticker}.", reply_to_message_id=message.id)
+            bot.send_message(message.chat.id, f"Não encontramos em nossa base de dados o fundo {ticker}.", reply_to_message_id=message.id)
             return
         doc_rend = buscar_ultimo_documento_provento(buscar_cnpj(ticker))
         if doc_rend:
@@ -654,7 +654,7 @@ def handle_command(message):
         else:
             bot.send_message(message.chat.id, f'Não encontramos informações sobre a última distribuição de proventos deste fundo.', reply_to_message_id=message.id)    
     elif len(message.text.strip().split()) == 1:
-        bot.send_message(message.chat.id, f'Informe o código de negociação do fundo imobiliário que você deseja ver informações sobre a última distribuições de proventos.\nEx.: "/rend URPR11".', reply_to_message_id=message.id)
+        bot.send_message(message.chat.id, f'Informe o código de negociação do fundo que você deseja ver informações sobre a última distribuições de proventos.\nEx.: "/rend URPR11".', reply_to_message_id=message.id)
     else:
         bot.send_message(message.chat.id, f'Uso incorreto. Para ver informações sobre a última distribuição de proventos de um fundo, envie /rend CODIGO_FUNDO.\nEx.: "/rend URPR11".', reply_to_message_id=message.id)
 
@@ -690,7 +690,7 @@ def handle_command(message):
         documentos = buscar_documentos2(buscar_cnpj(ticker), datetime.datetime.now() - datetime.timedelta(days=30))
         #print(documentos)
         if len(documentos) == 0:
-            bot.send_message(message.chat.id, f"O fundo imobiliário {ticker} não disponibilizaou nenhum documento nos últimos 30 dias.")
+            bot.send_message(message.chat.id, f"O fundo {ticker} não disponibilizaou nenhum documento nos últimos 30 dias.")
             return
         for doc in documentos:
             print(ticker, "-", doc["tipoDocumento"])
@@ -699,7 +699,7 @@ def handle_command(message):
             #if doc["tipoDocumento"] == "Rendimentos e Amortizações":
                 #informar_proventos(doc, message.from_user.id)
     elif len(message.text.strip().split()) == 1:
-        bot.send_message(message.chat.id, f'Informe o código de negociação do fundo imobiliário que você deseja ver os últimos documentos.\nEx.: "{cmd} URPR11".', reply_to_message_id=message.id)
+        bot.send_message(message.chat.id, f'Informe o código de negociação do fundo que você deseja ver os últimos documentos.\nEx.: "{cmd} URPR11".', reply_to_message_id=message.id)
     else:
         bot.send_message(message.chat.id, f'Uso incorreto. Para receber os comunicados mais recentes de um fundo, envie {cmd} CODIGO_FUNDO.\nEx.: "{cmd} URPR11".', reply_to_message_id=message.id)
 
@@ -718,7 +718,7 @@ def handle_command(message):
             if ticker in ("BODB11", "BDIF11", "CPTI11", "BIDB11", "IFRA11", "KDIF11", "OGIN11", "RBIF11", "CDII11", "JURO11", "SNID11", "XPID11"):
                 bot.send_message(message.chat.id, f"Desculpe, mas no momento não temos a opção de seguir FI-Infras.", reply_to_message_id=message.id)
             else:
-                bot.send_message(message.chat.id, f"Não encontramos em nossa base de dados o fundo imobiliário {ticker}.", reply_to_message_id=message.id)
+                bot.send_message(message.chat.id, f"Não encontramos em nossa base de dados o fundo {ticker}.", reply_to_message_id=message.id)
     else:
         bot.send_message(message.chat.id, 'Uso incorreto. Para seguir um fundo envie /seguir CODIGO_FUNDO. Ex.: "/seguir URPR11"', reply_to_message_id=message.id)
         
@@ -736,7 +736,7 @@ def handle_command(message):
     elif r == 1:
         bot.send_message(message.chat.id, f'Você ainda não segue esse fundo. Para seguir envie: "/seguir {ticker}"', reply_to_message_id=message.id)
     elif r == -1:
-        bot.send_message(message.chat.id, f"Não encontramos em nossa base de dados o fundo imobiliário {ticker}.", reply_to_message_id=message.id)
+        bot.send_message(message.chat.id, f"Não encontramos em nossa base de dados o fundo {ticker}.", reply_to_message_id=message.id)
         
 @bot.message_handler(commands=["fundos_seguidos"])
 def handle_command(message):
@@ -744,7 +744,7 @@ def handle_command(message):
     print(message.from_user.first_name, message.text)
     fs = base.buscar_seguidos(str(message.from_user.id))
     if len(fs) == 0:
-        bot.send_message(message.chat.id, f"Você ainda não está seguindo nenhum fundo imobiliário. Para começar, utilize o comando /seguir", reply_to_message_id=message.id)
+        bot.send_message(message.chat.id, f"Você ainda não está seguindo nenhum fundo. Para começar, utilize o comando /seguir", reply_to_message_id=message.id)
     else:
         resposta = "FIIs que você segue:"
         for f in fs:
@@ -915,7 +915,7 @@ def handle_command(message):
             cnpj = buscar_cnpj(ticker.upper())
             bot.send_message(message.chat.id, cnpj, reply_to_message_id=message.id)
         except:
-            bot.send_message(message.chat.id, f"Não encontramos em nossa base de dados o fundo imobiliário {ticker}.")
+            bot.send_message(message.chat.id, f"Não encontramos em nossa base de dados o fundo {ticker}.")
     else:
         bot.send_message(message.chat.id, 'Uso incorreto. Para ver o CNPJ um fundo envie /cnpj CODIGO_FUNDO. Ex.: "/cnpj URPR11"', reply_to_message_id=message.id)
 
