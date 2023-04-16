@@ -33,7 +33,7 @@ gspread_credentials = {
   "type": "service_account",
   "project_id": os.getenv("gspread_project_id"),
   "private_key_id": os.getenv("gspread_private_key_id"),
-  "private_key": os.getenv("gspread_private_key"),
+  "private_key": (os.getenv("gspread_private_key_1")+os.getenv("gspread_private_key_2")).replace(r"\n","\n"),
   "client_email": os.getenv("gspread_client_email"),
   "client_id": os.getenv("gspread_client_id"),
   "auth_uri": "https://accounts.google.com/o/oauth2/auth",
@@ -44,10 +44,10 @@ gspread_credentials = {
 
 #print(gspread_credentials)
 
-client = gspread.service_account(filename='superfiisbot-9f67df851d9a.json')
-#client = gspread.service_account_from_dict(gspread_credentials)
+#client = gspread.service_account(filename='superfiisbot-9f67df851d9a.json')
+client = gspread.service_account_from_dict(gspread_credentials)
 
-sheet = client.open("SeguidoresFIIs").sheet1
+sheet = client.open("Teste").sheet1
 sheet_infra = client.open("SeguidoresFI-Infras").sheet1
 
 telebot.apihelper.SESSION_TIME_TO_LIVE = 60 * 15
@@ -58,7 +58,7 @@ bot_super = os.getenv("bot_super_token")
 TELETHON_API_ID = os.getenv("telethon_api_id")
 TELETHON_API_HASH = os.getenv("telethon_api_hash")
 
-bot = telebot.TeleBot(bot_super)
+bot = telebot.TeleBot(bot_aux)
 
 
 
@@ -79,7 +79,8 @@ comandos = [
     ]
 
 fiis_cnpj = pd.read_csv("fiis_cnpj.csv", dtype={"Código":str, "CNPJ":str}).dropna()
- 
+fiagros_cnpj = pd.read_csv("fiagros_cnpj.csv", dtype={"Código":str, "CNPJ":str}).dropna()
+fiis_cnpj = pd.concat([fiis_cnpj, fiagros_cnpj])
 
 
 
