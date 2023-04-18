@@ -212,7 +212,10 @@ def informar_proventos(doc, usuarios):
         
     mensagem += "\n\n@RepositorioDeFIIs"
     for u in usuarios:
-        bot.send_message(u, mensagem)
+        try:
+            bot.send_message(u, mensagem)
+        except:
+            pass
 
 def informar_fechamento2():
     dic = {}
@@ -979,7 +982,10 @@ def verificar():
                     try:
                         for seg in seguidores:
                             seg = int(seg)
-                            env(doc, seg)
+                            try:
+                                env(doc, seg)
+                            except:
+                                pass
                     except:
                         ultima_busca[f] = h
                     if doc["tipoDocumento"] == "Rendimentos e Amortizações":
@@ -1123,7 +1129,7 @@ for f in base.colunas():
     
 ultima_busca_infra = {}
 for f in base_infra.colunas():
-    ultima_busca_infra[f] = agora() - datetime.timedelta(days=1)
+    ultima_busca_infra[f] = agora()# - datetime.timedelta(days=1)
     
 def verificar_infra():
     #print("Verificando...")
