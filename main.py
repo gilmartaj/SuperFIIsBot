@@ -29,6 +29,10 @@ import pytz
 
 import traceback
 
+import concurrent.futures
+
+from multiprocessing.pool import ThreadPool
+
 gspread_credentials = {
   "type": "service_account",
   "project_id": os.getenv("gspread_project_id"),
@@ -47,7 +51,7 @@ gspread_credentials = {
 #client = gspread.service_account(filename='superfiisbot-9f67df851d9a.json')
 client = gspread.service_account_from_dict(gspread_credentials)
 
-sheet = client.open("SeguidoresFIIs").sheet1
+sheet = client.open("Teste").sheet1
 sheet_infra = client.open("SeguidoresFI-Infras").sheet1
 
 telebot.apihelper.SESSION_TIME_TO_LIVE = 60 * 15
@@ -212,7 +216,10 @@ def informar_proventos(doc, usuarios):
         
     mensagem += "\n\n@RepositorioDeFIIs"
     for u in usuarios:
-        bot.send_message(u, mensagem)
+        try:
+            bot.send_message(u, mensagem)
+        except:
+            pass
 
 def informar_fechamento2():
     dic = {}
@@ -431,6 +438,7 @@ def envio_multiplo(doc, file_id, usuarios, caption_):
             visible_file_name="Informe.pdf",
             caption=caption_
             )
+            time.sleep(0.041)
   
 def envio_multiplo_telebot(doc, usuarios, caption_):
     if len(usuarios) <= 0:
@@ -452,21 +460,26 @@ def envio_multiplo_telethon(doc, usuarios):
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     tipo_doc = doc["tipoDocumento"].replace("/", "-") if doc["tipoDocumento"].strip() != "" else doc["categoriaDocumento"]
+    if doc["tipoDocumento"].strip() == "AGO" or doc["tipoDocumento"].strip() == "AGE":
+                tipo_doc = doc["categoriaDocumento"].replace("/", "-").strip() + " - " + doc["tipoDocumento"].replace("/", "-").strip() + " - " + doc["especieDocumento"].replace("/", "-").strip()
     with TelegramClient("bot", TELETHON_API_ID, TELETHON_API_HASH).start(bot_token=bot_super) as client:
      with open(f'{tipo_doc}.pdf', "wb") as f:
         f.write(requests.get(f'https://fnet.bmfbovespa.com.br/fnet/publico/exibirDocumento?id={doc["id"]}', headers={"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"}).content)
         loop.run_until_complete(asyncio.wait([ enviar_documento( doc, int(usuarios[0]), client)]))
+        print("id", doc["file_id"])
         #print("LLLLLLLLLLLLLLLL")
      os.remove(f'{tipo_doc}.pdf')
-    
+    print(len(usuarios))
     if len(usuarios) > 1:
         tipo_doc = doc["tipoDocumento"].replace("/", "-") if doc["tipoDocumento"].strip() != "" else doc["categoriaDocumento"]
+        if doc["tipoDocumento"].strip() == "AGO" or doc["tipoDocumento"].strip() == "AGE":
+            tipo_doc = doc["categoriaDocumento"].replace("/", "-").strip() + " - " + doc["tipoDocumento"].replace("/", "-").strip() + " - " + doc["especieDocumento"].replace("/", "-").strip()
         if tipo_doc == "Relatório Gerencial":
             data_ref = re.search(r"\d\d/\d\d\d\d", doc["dataReferencia"])
         else:
             data_ref = re.search(r"\d\d/\d\d/\d\d\d\d", doc["dataReferencia"])
         data_ref = "("+data_ref.group()+")" if data_ref else doc["dataReferencia"].replace("/", "-").replace(":", "-")     
-        envio_multiplo(doc, doc["file_id"], usuarios[1:], f'{doc["codigoFII"]} - {doc["tipoDocumento"]} {data_ref}\n\n@RepositorioDeFIIs')
+        envio_multiplo(doc, doc["file_id"], usuarios[1:], f'{doc["codigoFII"]} - {tipo_doc} {data_ref}\n\n@RepositorioDeFIIs')
 
 def env2(doc, usuarios):
     if doc["categoriaDocumento"] in ("Informes Periódicos", "Aviso aos Cotistas - Estruturado") and doc["tipoDocumento"] != "Demonstrações Financeiras" or "Estruturado" in doc["tipoDocumento"] or "Formulário de Liberação para Negociação das Cotas" in doc["tipoDocumento"]:
@@ -951,45 +964,60 @@ def handle_command(message):
     print(agora(), message.from_user.first_name, message.from_user.id, message.text)
     bot.send_message(message.from_user.id, "Para dúvidas, sugestões e reportes de erros, envie uma mensagem direta para o desenvolvedor @gilmartaj, aqui mesmo pelo Telegram.")
 
+def thread_envio(doc, seguidores):
+    print("Enviando...",seguidores)
+    try:
+        try:
+            #for seg in seguidores:
+                #seg = int(seg)
+                try:
+                    env2(doc, seguidores)
+                except:
+                    print("ERRO",doc["tipoDocumento"])
+                    traceback.print_exc()
+                    
+        except:
+            ultima_busca[f] = h
+            traceback.print_exc()
+        if doc["tipoDocumento"] == "Rendimentos e Amortizações":
+            #for seg in seguidores:
+                #seg = int(seg)
+           informar_proventos(doc, seguidores)
+        elif "Informe Mensal Estruturado" in doc["tipoDocumento"]:
+            informar_atualizacao_patrimonial(doc, seguidores)
+    except:
+        traceback.print_exc()
 
 def verificar():
-    #print("Verificando...")
+    print("Verificando...")
     for f in base.colunas():
         seguidores = base.buscar_seguidores(f)
         if len(seguidores) > 0:
-            #print(f, len(seguidores))
+            print(f, len(seguidores))
             h = ultima_busca[f]
             ultima_busca[f] = agora()
             documentos = []
             try:
                 documentos = buscar_documentos(buscar_cnpj(f), h)
+                print(len(documentos))
             except:
                 pass
-            
             #if len(documentos) == 0:
              #   for seg in seguidores:
              #       seg = int(seg)
                     #bot.send_message(seg, f + " - Nenhum documento")
-            
+            #with concurrent.futures.ThreadPoolExecutor(max_workers = 5) as executor:
+            #with ThreadPool(processes = 5) as executor:
             for doc in documentos:
                 print(f, "-", doc["tipoDocumento"])
-                
                 doc["codigoFII"] = f
-                try:
-                    try:
-                        for seg in seguidores:
-                            seg = int(seg)
-                            env(doc, seg)
-                    except:
-                        ultima_busca[f] = h
-                    if doc["tipoDocumento"] == "Rendimentos e Amortizações":
-                        #for seg in seguidores:
-                            #seg = int(seg)
-                       informar_proventos(doc, seguidores)
-                    elif "Informe Mensal Estruturado" in doc["tipoDocumento"]:
-                        informar_atualizacao_patrimonial(doc, seguidores)
-                except:
-                    traceback.print_exc()
+                thread_envio(doc, seguidores)
+                    #Thread(target=thread_envio, args=(doc, seguidores), daemon=True).start()
+                    #executor.submit(thread_envio, doc, seguidores)
+                    #try:
+                        #executor.apply_async(thread_envio, args=(doc, seguidores))
+                    #except:
+                        #traceback.print_exc()
                     
 def verificar2():
     for f in base.colunas():
@@ -1041,6 +1069,7 @@ def verificacao_periodica():
 
     while True:
         try:
+            print("init")
             Thread(target=verificar, daemon=True).start()
             h = agora()
             if is_dia_util(h.date()) and h.hour > 7 and h.hour < 22:
@@ -1109,21 +1138,22 @@ def convv(v):
         return f"R$ {round(v, 2):.2f} ".replace(".", ",")
         
 def thread_teste():
-    docs = buscar_documentos(buscar_cnpj("FAED11"), desde=agora()-datetime.timedelta(days=30))  
+    docs = buscar_documentos(buscar_cnpj("CCME11"), desde=agora()-datetime.timedelta(days=30))  
     print(len(docs))
     for doc in docs:
-        doc["codigoFII"] = "FAED11"
-        env2(doc, ["-495713843", "556068392"])
+        print(doc["tipoDocumento"])
+        doc["codigoFII"] = "CCME11"
+        env2(doc, ["-495713843", "556068392","-743953207"])
         
 tz_info = agora().tzinfo
       
 ultima_busca = {}
 for f in base.colunas():
-    ultima_busca[f] = agora()
+    ultima_busca[f] = agora() #- datetime.timedelta(days=5)
     
 ultima_busca_infra = {}
 for f in base_infra.colunas():
-    ultima_busca_infra[f] = agora() - datetime.timedelta(days=1)
+    ultima_busca_infra[f] = agora()# - datetime.timedelta(days=1)
     
 def verificar_infra():
     #print("Verificando...")
@@ -1263,11 +1293,11 @@ def informar_atualizacao_patrimonial(doc, usuarios):
 
 #Thread(target=thread_teste).start()
 #Thread(target=thread_fechamento, daemon=True).start()
-Thread(target=verificacao_periodica, daemon=True).start()
+Thread(target=verificacao_periodica, daemon=False).start()
 Thread(target=verificacao_periodica_infra, daemon=True).start()
-bot.set_my_commands([telebot.types.BotCommand(comando[0], comando[1]) for comando in comandos])
+#bot.set_my_commands([telebot.types.BotCommand(comando[0], comando[1]) for comando in comandos])
 
-bot.infinity_polling(timeout=200, long_polling_timeout = 5)
+#bot.infinity_polling(timeout=200, long_polling_timeout = 5)
 
 #docs = buscar_documentos_infra(tokens_infra["JURO11"], agora()-datetime.timedelta(days=10))
 #print(len(docs))
