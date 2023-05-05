@@ -1125,7 +1125,7 @@ tz_info = agora().tzinfo
       
 ultima_busca = {}
 for f in base.colunas():
-    ultima_busca[f] = agora() - datetime.timedelta(hours=8)
+    ultima_busca[f] = agora()
     
 ultima_busca_infra = {}
 for f in base_infra.colunas():
