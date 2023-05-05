@@ -62,7 +62,7 @@ bot_super = os.getenv("bot_super_token")
 TELETHON_API_ID = os.getenv("telethon_api_id")
 TELETHON_API_HASH = os.getenv("telethon_api_hash")
 
-bot = telebot.TeleBot(bot_super)
+bot = telebot.TeleBot(bot_aux)
 
 
 
@@ -417,7 +417,7 @@ def env_infra(cod_fundo, doc, usuarios):
         compartilhar_documento_enviado(usuarios[1:], file_id, caption)
 
     
-def buscar_ultimo_documento_provento(cnpj):
+"""def buscar_ultimo_documento_provento(cnpj):
     rend = None
     r = requests.get(f"https://fnet.bmfbovespa.com.br/fnet/publico/pesquisarGerenciadorDocumentosDados?d=1&s=0&l=100&o%5B0%5D%5BdataEntrega%5D=desc&cnpjFundo={cnpj}")
     for d in r.json()["data"]:
@@ -425,6 +425,27 @@ def buscar_ultimo_documento_provento(cnpj):
         #print(datetime.datetime(year=int(de[6:10]), month=int(de[3:5]), day=int(de[0:2]), hour=int(de[11:13])), desde)
         if tipo.strip() == "Rendimentos e Amortizações":
             return d
+    return None"""
+def buscar_ultimo_documento_provento(cnpj):
+    r = requests.get(f"https://fnet.bmfbovespa.com.br/fnet/publico/pesquisarGerenciadorDocumentosDados?d=0&s=0&l=1&o%5B0%5D%5BdataEntrega%5D=desc&cnpjFundo={cnpj}&idCategoriaDocumento=14&idTipoDocumento=41")
+    if len(r.json()["data"]) > 0:
+        print("Enc")
+        return r.json()["data"][0]
+    return None
+    
+def buscar_ultimo_informe_mensal_estruturado(cnpj):
+    r = requests.get(f"https://fnet.bmfbovespa.com.br/fnet/publico/pesquisarGerenciadorDocumentosDados?d=0&s=0&l=1&o%5B0%5D%5BdataEntrega%5D=desc&cnpjFundo={cnpj}&idCategoriaDocumento=6&idTipoDocumento=40")
+    if len(r.json()["data"]) > 0:
+        print("Enc")
+        return r.json()["data"][0]
+    return None
+    
+    
+def buscar_ultimo_relatorio_gerencial(cnpj):
+    r = requests.get(f"https://fnet.bmfbovespa.com.br/fnet/publico/pesquisarGerenciadorDocumentosDados?d=0&s=0&l=1&o%5B0%5D%5BdataEntrega%5D=desc&cnpjFundo={cnpj}&idCategoriaDocumento=7&idTipoDocumento=9")
+    if len(r.json()["data"]) > 0:
+        print("Enc")
+        return r.json()["data"][0]
     return None
         
 def baixarDocumento(link):
@@ -670,8 +691,54 @@ def handle_command(message):
         bot.send_message(message.chat.id, f'Informe o código de negociação do fundo que você deseja ver informações sobre a última distribuições de proventos.\nEx.: "/rend URPR11".', reply_to_message_id=message.id)
     else:
         bot.send_message(message.chat.id, f'Uso incorreto. Para ver informações sobre a última distribuição de proventos de um fundo, envie /rend CODIGO_FUNDO.\nEx.: "/rend URPR11".', reply_to_message_id=message.id)
+        
+@bot.message_handler(commands=["pat"])
+def handle_command(message):
+    #cmd = message.text.split()[0]
+    #print(message)
+    print(agora(), message.from_user.first_name, message.text)
+    if len(message.text.strip().split()) == 2:
+        ticker = message.text.split()[1].strip().upper()
+        if not ticker in base.colunas():
+            if ticker in ("BODB11", "BDIF11", "CPTI11", "BIDB11", "IFRA11", "KDIF11", "OGIN11", "RBIF11", "CDII11", "JURO11", "SNID11", "XPID11"):
+                bot.send_message(message.chat.id, f"Desculpe, mas no momento esta função não está disponível para FI-Infras.", reply_to_message_id=message.id)
+                return
+            bot.send_message(message.chat.id, f"Não encontramos em nossa base de dados o fundo {ticker}.", reply_to_message_id=message.id)
+            return
+        doc_pat = buscar_ultimo_informe_mensal_estruturado(buscar_cnpj(ticker))
+        if doc_pat:
+            doc_pat["codigoFII"] = ticker
+            informar_atualizacao_patrimonial(doc_pat, [message.from_user.id])
+        else:
+            bot.send_message(message.chat.id, f'Não encontramos informações sobre a atualização patrimonial deste fundo.', reply_to_message_id=message.id)    
+    elif len(message.text.strip().split()) == 1:
+        bot.send_message(message.chat.id, f'Informe o código de negociação do fundo que você deseja ver informações sobre a atualização patrimonial.\nEx.: "/pat URPR11".', reply_to_message_id=message.id)
+    else:
+        bot.send_message(message.chat.id, f'Uso incorreto. Para ver informações sobre a atualização patrimoniall de um fundo, envie /pat CODIGO_FUNDO.\nEx.: "/pat URPR11".', reply_to_message_id=message.id)
 
-
+@bot.message_handler(commands=["relat"])
+def handle_command(message):
+    #cmd = message.text.split()[0]
+    #print(message)
+    print(agora(), message.from_user.first_name, message.text)
+    if len(message.text.strip().split()) == 2:
+        ticker = message.text.split()[1].strip().upper()
+        if not ticker in base.colunas():
+            if ticker in ("BODB11", "BDIF11", "CPTI11", "BIDB11", "IFRA11", "KDIF11", "OGIN11", "RBIF11", "CDII11", "JURO11", "SNID11", "XPID11"):
+                bot.send_message(message.chat.id, f"Desculpe, mas no momento esta função não está disponível para FI-Infras.", reply_to_message_id=message.id)
+                return
+            bot.send_message(message.chat.id, f"Não encontramos em nossa base de dados o fundo {ticker}.", reply_to_message_id=message.id)
+            return
+        doc_relat = buscar_ultimo_relatorio_gerencial(buscar_cnpj(ticker))
+        if doc_relat:
+            doc_relat["codigoFII"] = ticker
+            env2(doc_relat, [message.from_user.id])
+        else:
+            bot.send_message(message.chat.id, f'Não encontramos informações sobre a última distribuição de proventos deste fundo.', reply_to_message_id=message.id)    
+    elif len(message.text.strip().split()) == 1:
+        bot.send_message(message.chat.id, f'Informe o código de negociação do fundo que você deseja ver informações sobre a última distribuições de proventos.\nEx.: "/rend URPR11".', reply_to_message_id=message.id)
+    else:
+        bot.send_message(message.chat.id, f'Uso incorreto. Para ver informações sobre a última distribuição de proventos de um fundo, envie /rend CODIGO_FUNDO.\nEx.: "/rend URPR11".', reply_to_message_id=message.id)
 
 
 
@@ -1295,9 +1362,9 @@ def informar_atualizacao_patrimonial(doc, usuarios):
 #Thread(target=thread_fechamento, daemon=True).start()
 Thread(target=verificacao_periodica, daemon=False).start()
 Thread(target=verificacao_periodica_infra, daemon=True).start()
-#bot.set_my_commands([telebot.types.BotCommand(comando[0], comando[1]) for comando in comandos])
+bot.set_my_commands([telebot.types.BotCommand(comando[0], comando[1]) for comando in comandos])
 
-#bot.infinity_polling(timeout=200, long_polling_timeout = 5)
+bot.infinity_polling(timeout=200, long_polling_timeout = 5)
 
 #docs = buscar_documentos_infra(tokens_infra["JURO11"], agora()-datetime.timedelta(days=10))
 #print(len(docs))
