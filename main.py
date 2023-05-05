@@ -51,7 +51,7 @@ gspread_credentials = {
 #client = gspread.service_account(filename='superfiisbot-9f67df851d9a.json')
 client = gspread.service_account_from_dict(gspread_credentials)
 
-sheet = client.open("Teste").sheet1
+sheet = client.open("SeguidoresFIIs").sheet1
 sheet_infra = client.open("SeguidoresFI-Infras").sheet1
 
 telebot.apihelper.SESSION_TIME_TO_LIVE = 60 * 15
@@ -62,7 +62,7 @@ bot_super = os.getenv("bot_super_token")
 TELETHON_API_ID = os.getenv("telethon_api_id")
 TELETHON_API_HASH = os.getenv("telethon_api_hash")
 
-bot = telebot.TeleBot(bot_aux)
+bot = telebot.TeleBot(bot_super)
 
 
 
@@ -80,6 +80,11 @@ comandos = [
     ("seguir", 'Use para receber todos os documentos e informações de rendimentos de um FII. Ex.: "/seguir URPR11"'), 
     ("ultimos_documentos", 'Receba os documentos emitidos pelo fundo nos últimos 30 dias. Ex.: "/ultimos_documentos URPR11"'),
     #("teste", "Teste"),
+    ]
+    
+mais_comandos = [
+    ("pat", "Mostra informações sobre atualização patrimonial de um fundo.\nEx.: /pat CYCR11"),
+    ("relat", "Use para receber o último relatório gerencial publicado por um fundo. Ex.: /relat CYCR11"),
     ]
 
 fiis_cnpj = pd.read_csv("fiis_cnpj.csv", dtype={"Código":str, "CNPJ":str}).dropna()
@@ -731,14 +736,15 @@ def handle_command(message):
             return
         doc_relat = buscar_ultimo_relatorio_gerencial(buscar_cnpj(ticker))
         if doc_relat:
+            bot.send_message(message.chat.id, f"Buscando...")
             doc_relat["codigoFII"] = ticker
             env2(doc_relat, [message.from_user.id])
         else:
-            bot.send_message(message.chat.id, f'Não encontramos informações sobre a última distribuição de proventos deste fundo.', reply_to_message_id=message.id)    
+            bot.send_message(message.chat.id, f'Não encontramos informações sobre relatórios gerenciais deste fundo.', reply_to_message_id=message.id)    
     elif len(message.text.strip().split()) == 1:
-        bot.send_message(message.chat.id, f'Informe o código de negociação do fundo que você deseja ver informações sobre a última distribuições de proventos.\nEx.: "/rend URPR11".', reply_to_message_id=message.id)
+        bot.send_message(message.chat.id, f'Informe o código de negociação do fundo que você deseja ver o último relatório gerencial publicado.\nEx.: "/relat CYCR11".', reply_to_message_id=message.id)
     else:
-        bot.send_message(message.chat.id, f'Uso incorreto. Para ver informações sobre a última distribuição de proventos de um fundo, envie /rend CODIGO_FUNDO.\nEx.: "/rend URPR11".', reply_to_message_id=message.id)
+        bot.send_message(message.chat.id, f'Uso incorreto. Para ver o último relatório gerencial de um fundo, envie /rend CODIGO_FUNDO.\nEx.: "/rend CYCR11".', reply_to_message_id=message.id)
 
 
 
