@@ -51,7 +51,7 @@ gspread_credentials = {
 #client = gspread.service_account(filename='superfiisbot-9f67df851d9a.json')
 client = gspread.service_account_from_dict(gspread_credentials)
 
-sheet = client.open("Teste").sheet1
+sheet = client.open("SeguidoresFIIs").sheet1
 sheet_infra = client.open("SeguidoresFI-Infras").sheet1
 
 telebot.apihelper.SESSION_TIME_TO_LIVE = 60 * 15
@@ -1229,7 +1229,7 @@ tz_info = agora().tzinfo
       
 ultima_busca = {}
 for f in base.colunas():
-    ultima_busca[f] = agora() #- datetime.timedelta(days=5)
+    ultima_busca[f] = agora() - datetime.timedelta(hours=1)
     
 ultima_busca_infra = {}
 for f in base_infra.colunas():
