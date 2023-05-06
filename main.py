@@ -434,14 +434,12 @@ def env_infra(cod_fundo, doc, usuarios):
 def buscar_ultimo_documento_provento(cnpj):
     r = requests.get(f"https://fnet.bmfbovespa.com.br/fnet/publico/pesquisarGerenciadorDocumentosDados?d=0&s=0&l=1&o%5B0%5D%5BdataEntrega%5D=desc&cnpjFundo={cnpj}&idCategoriaDocumento=14&idTipoDocumento=41")
     if len(r.json()["data"]) > 0:
-        print("Enc")
         return r.json()["data"][0]
     return None
     
 def buscar_ultimo_informe_mensal_estruturado(cnpj):
     r = requests.get(f"https://fnet.bmfbovespa.com.br/fnet/publico/pesquisarGerenciadorDocumentosDados?d=0&s=0&l=1&o%5B0%5D%5BdataEntrega%5D=desc&cnpjFundo={cnpj}&idCategoriaDocumento=6&idTipoDocumento=40")
     if len(r.json()["data"]) > 0:
-        print("Enc")
         return r.json()["data"][0]
     return None
     
@@ -492,10 +490,10 @@ def envio_multiplo_telethon(doc, usuarios):
      with open(f'{tipo_doc}.pdf', "wb") as f:
         f.write(requests.get(f'https://fnet.bmfbovespa.com.br/fnet/publico/exibirDocumento?id={doc["id"]}', headers={"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"}).content)
         loop.run_until_complete(asyncio.wait([ enviar_documento( doc, int(usuarios[0]), client)]))
-        print("id", doc["file_id"])
+        #print("id", doc["file_id"])
         #print("LLLLLLLLLLLLLLLL")
      os.remove(f'{tipo_doc}.pdf')
-    print(len(usuarios))
+    #print(len(usuarios))
     if len(usuarios) > 1:
         tipo_doc = doc["tipoDocumento"].replace("/", "-") if doc["tipoDocumento"].strip() != "" else doc["categoriaDocumento"]
         if doc["tipoDocumento"].strip() == "AGO" or doc["tipoDocumento"].strip() == "AGE":
@@ -1313,7 +1311,6 @@ def informar_atualizacao_patrimonial(doc, usuarios):
     competencia = dados["DadosEconomicoFinanceiros"]["DadosGerais"]["Competencia"]
     if re.match(r"^\d{4}-\d{2}-\d{2}$",competencia):
         competencia = competencia[5:7]+"/"+competencia[0:4]
-        print("Comp")
         
     mensagem += f"\n\U0001F5D3Competência: {competencia}\n"
     
