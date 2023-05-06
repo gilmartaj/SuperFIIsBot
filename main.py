@@ -84,7 +84,7 @@ comandos = [
     
 mais_comandos = [
     ("pat", "Mostra informações sobre atualização patrimonial de um fundo.\nEx.: /pat CYCR11"),
-    ("relat", "Use para receber o último relatório gerencial publicado por um fundo. Ex.: /relat CYCR11"),
+    ("relat", "Use para receber o último relatório gerencial publicado por um fundo. \nEx.: /relat CYCR11"),
     ]
 
 fiis_cnpj = pd.read_csv("fiis_cnpj.csv", dtype={"Código":str, "CNPJ":str}).dropna()
