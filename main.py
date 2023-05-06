@@ -1,5 +1,5 @@
 import pandas as pd
- 
+
 import requests
 import telebot
 #import pandas as pd
@@ -29,6 +29,10 @@ import pytz
 
 import traceback
 
+import concurrent.futures
+
+from multiprocessing.pool import ThreadPool
+
 gspread_credentials = {
   "type": "service_account",
   "project_id": os.getenv("gspread_project_id"),
@@ -47,7 +51,7 @@ gspread_credentials = {
 #client = gspread.service_account(filename='superfiisbot-9f67df851d9a.json')
 client = gspread.service_account_from_dict(gspread_credentials)
 
-sheet = client.open("SeguidoresFIIs").sheet1
+sheet = client.open("Teste").sheet1
 sheet_infra = client.open("SeguidoresFI-Infras").sheet1
 
 telebot.apihelper.SESSION_TIME_TO_LIVE = 60 * 15
@@ -75,7 +79,12 @@ comandos = [
     ("rend", 'Informa a última distribuição de proventos do fundo. Ex.: "/rend URPR11"'),
     ("seguir", 'Use para receber todos os documentos e informações de rendimentos de um FII. Ex.: "/seguir URPR11"'), 
     ("ultimos_documentos", 'Receba os documentos emitidos pelo fundo nos últimos 30 dias. Ex.: "/ultimos_documentos URPR11"'),
-    #("teste", "Teste"),
+    ("mais", "Mais comandos..."),
+    ]
+    
+mais_comandos = [
+    ("pat", "Mostra informações sobre atualização patrimonial de um fundo.\nEx.: /pat CYCR11"),
+    ("relat", "Use para receber o último relatório gerencial publicado por um fundo. Ex.: /relat CYCR11"),
     ]
 
 fiis_cnpj = pd.read_csv("fiis_cnpj.csv", dtype={"Código":str, "CNPJ":str}).dropna()
@@ -413,7 +422,7 @@ def env_infra(cod_fundo, doc, usuarios):
         compartilhar_documento_enviado(usuarios[1:], file_id, caption)
 
     
-def buscar_ultimo_documento_provento(cnpj):
+"""def buscar_ultimo_documento_provento(cnpj):
     rend = None
     r = requests.get(f"https://fnet.bmfbovespa.com.br/fnet/publico/pesquisarGerenciadorDocumentosDados?d=1&s=0&l=100&o%5B0%5D%5BdataEntrega%5D=desc&cnpjFundo={cnpj}")
     for d in r.json()["data"]:
@@ -421,6 +430,27 @@ def buscar_ultimo_documento_provento(cnpj):
         #print(datetime.datetime(year=int(de[6:10]), month=int(de[3:5]), day=int(de[0:2]), hour=int(de[11:13])), desde)
         if tipo.strip() == "Rendimentos e Amortizações":
             return d
+    return None"""
+def buscar_ultimo_documento_provento(cnpj):
+    r = requests.get(f"https://fnet.bmfbovespa.com.br/fnet/publico/pesquisarGerenciadorDocumentosDados?d=0&s=0&l=1&o%5B0%5D%5BdataEntrega%5D=desc&cnpjFundo={cnpj}&idCategoriaDocumento=14&idTipoDocumento=41")
+    if len(r.json()["data"]) > 0:
+        print("Enc")
+        return r.json()["data"][0]
+    return None
+    
+def buscar_ultimo_informe_mensal_estruturado(cnpj):
+    r = requests.get(f"https://fnet.bmfbovespa.com.br/fnet/publico/pesquisarGerenciadorDocumentosDados?d=0&s=0&l=1&o%5B0%5D%5BdataEntrega%5D=desc&cnpjFundo={cnpj}&idCategoriaDocumento=6&idTipoDocumento=40")
+    if len(r.json()["data"]) > 0:
+        print("Enc")
+        return r.json()["data"][0]
+    return None
+    
+    
+def buscar_ultimo_relatorio_gerencial(cnpj):
+    r = requests.get(f"https://fnet.bmfbovespa.com.br/fnet/publico/pesquisarGerenciadorDocumentosDados?d=0&s=0&l=1&o%5B0%5D%5BdataEntrega%5D=desc&cnpjFundo={cnpj}&idCategoriaDocumento=7&idTipoDocumento=9")
+    if len(r.json()["data"]) > 0:
+        print("Enc")
+        return r.json()["data"][0]
     return None
         
 def baixarDocumento(link):
@@ -434,6 +464,7 @@ def envio_multiplo(doc, file_id, usuarios, caption_):
             visible_file_name="Informe.pdf",
             caption=caption_
             )
+            time.sleep(0.041)
   
 def envio_multiplo_telebot(doc, usuarios, caption_):
     if len(usuarios) <= 0:
@@ -455,21 +486,26 @@ def envio_multiplo_telethon(doc, usuarios):
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     tipo_doc = doc["tipoDocumento"].replace("/", "-") if doc["tipoDocumento"].strip() != "" else doc["categoriaDocumento"]
+    if doc["tipoDocumento"].strip() == "AGO" or doc["tipoDocumento"].strip() == "AGE":
+                tipo_doc = doc["categoriaDocumento"].replace("/", "-").strip() + " - " + doc["tipoDocumento"].replace("/", "-").strip() + " - " + doc["especieDocumento"].replace("/", "-").strip()
     with TelegramClient("bot", TELETHON_API_ID, TELETHON_API_HASH).start(bot_token=bot_super) as client:
      with open(f'{tipo_doc}.pdf', "wb") as f:
         f.write(requests.get(f'https://fnet.bmfbovespa.com.br/fnet/publico/exibirDocumento?id={doc["id"]}', headers={"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"}).content)
         loop.run_until_complete(asyncio.wait([ enviar_documento( doc, int(usuarios[0]), client)]))
+        print("id", doc["file_id"])
         #print("LLLLLLLLLLLLLLLL")
      os.remove(f'{tipo_doc}.pdf')
-    
+    print(len(usuarios))
     if len(usuarios) > 1:
         tipo_doc = doc["tipoDocumento"].replace("/", "-") if doc["tipoDocumento"].strip() != "" else doc["categoriaDocumento"]
+        if doc["tipoDocumento"].strip() == "AGO" or doc["tipoDocumento"].strip() == "AGE":
+            tipo_doc = doc["categoriaDocumento"].replace("/", "-").strip() + " - " + doc["tipoDocumento"].replace("/", "-").strip() + " - " + doc["especieDocumento"].replace("/", "-").strip()
         if tipo_doc == "Relatório Gerencial":
             data_ref = re.search(r"\d\d/\d\d\d\d", doc["dataReferencia"])
         else:
             data_ref = re.search(r"\d\d/\d\d/\d\d\d\d", doc["dataReferencia"])
         data_ref = "("+data_ref.group()+")" if data_ref else doc["dataReferencia"].replace("/", "-").replace(":", "-")     
-        envio_multiplo(doc, doc["file_id"], usuarios[1:], f'{doc["codigoFII"]} - {doc["tipoDocumento"]} {data_ref}\n\n@RepositorioDeFIIs')
+        envio_multiplo(doc, doc["file_id"], usuarios[1:], f'{doc["codigoFII"]} - {tipo_doc} {data_ref}\n\n@RepositorioDeFIIs')
 
 def env2(doc, usuarios):
     if doc["categoriaDocumento"] in ("Informes Periódicos", "Aviso aos Cotistas - Estruturado") and doc["tipoDocumento"] != "Demonstrações Financeiras" or "Estruturado" in doc["tipoDocumento"] or "Formulário de Liberação para Negociação das Cotas" in doc["tipoDocumento"]:
@@ -660,8 +696,55 @@ def handle_command(message):
         bot.send_message(message.chat.id, f'Informe o código de negociação do fundo que você deseja ver informações sobre a última distribuições de proventos.\nEx.: "/rend URPR11".', reply_to_message_id=message.id)
     else:
         bot.send_message(message.chat.id, f'Uso incorreto. Para ver informações sobre a última distribuição de proventos de um fundo, envie /rend CODIGO_FUNDO.\nEx.: "/rend URPR11".', reply_to_message_id=message.id)
+        
+@bot.message_handler(commands=["pat"])
+def handle_command(message):
+    #cmd = message.text.split()[0]
+    #print(message)
+    print(agora(), message.from_user.first_name, message.text)
+    if len(message.text.strip().split()) == 2:
+        ticker = message.text.split()[1].strip().upper()
+        if not ticker in base.colunas():
+            if ticker in ("BODB11", "BDIF11", "CPTI11", "BIDB11", "IFRA11", "KDIF11", "OGIN11", "RBIF11", "CDII11", "JURO11", "SNID11", "XPID11"):
+                bot.send_message(message.chat.id, f"Desculpe, mas no momento esta função não está disponível para FI-Infras.", reply_to_message_id=message.id)
+                return
+            bot.send_message(message.chat.id, f"Não encontramos em nossa base de dados o fundo {ticker}.", reply_to_message_id=message.id)
+            return
+        doc_pat = buscar_ultimo_informe_mensal_estruturado(buscar_cnpj(ticker))
+        if doc_pat:
+            doc_pat["codigoFII"] = ticker
+            informar_atualizacao_patrimonial(doc_pat, [message.from_user.id])
+        else:
+            bot.send_message(message.chat.id, f'Não encontramos informações sobre a atualização patrimonial deste fundo.', reply_to_message_id=message.id)    
+    elif len(message.text.strip().split()) == 1:
+        bot.send_message(message.chat.id, f'Informe o código de negociação do fundo que você deseja ver informações sobre a atualização patrimonial.\nEx.: "/pat URPR11".', reply_to_message_id=message.id)
+    else:
+        bot.send_message(message.chat.id, f'Uso incorreto. Para ver informações sobre a atualização patrimoniall de um fundo, envie /pat CODIGO_FUNDO.\nEx.: "/pat URPR11".', reply_to_message_id=message.id)
 
-
+@bot.message_handler(commands=["relat"])
+def handle_command(message):
+    #cmd = message.text.split()[0]
+    #print(message)
+    print(agora(), message.from_user.first_name, message.text)
+    if len(message.text.strip().split()) == 2:
+        ticker = message.text.split()[1].strip().upper()
+        if not ticker in base.colunas():
+            if ticker in ("BODB11", "BDIF11", "CPTI11", "BIDB11", "IFRA11", "KDIF11", "OGIN11", "RBIF11", "CDII11", "JURO11", "SNID11", "XPID11"):
+                bot.send_message(message.chat.id, f"Desculpe, mas no momento esta função não está disponível para FI-Infras.", reply_to_message_id=message.id)
+                return
+            bot.send_message(message.chat.id, f"Não encontramos em nossa base de dados o fundo {ticker}.", reply_to_message_id=message.id)
+            return
+        doc_relat = buscar_ultimo_relatorio_gerencial(buscar_cnpj(ticker))
+        if doc_relat:
+            bot.send_message(message.chat.id, f"Buscando...")
+            doc_relat["codigoFII"] = ticker
+            env2(doc_relat, [message.from_user.id])
+        else:
+            bot.send_message(message.chat.id, f'Não encontramos informações sobre relatórios gerenciais deste fundo.', reply_to_message_id=message.id)    
+    elif len(message.text.strip().split()) == 1:
+        bot.send_message(message.chat.id, f'Informe o código de negociação do fundo que você deseja ver o último relatório gerencial publicado.\nEx.: "/relat CYCR11".', reply_to_message_id=message.id)
+    else:
+        bot.send_message(message.chat.id, f'Uso incorreto. Para ver o último relatório gerencial de um fundo, envie /rend CODIGO_FUNDO.\nEx.: "/rend CYCR11".', reply_to_message_id=message.id)
 
 
 
@@ -922,10 +1005,10 @@ def handle_command(message):
     else:
         bot.send_message(message.chat.id, 'Uso incorreto. Para ver o CNPJ um fundo envie /cnpj CODIGO_FUNDO. Ex.: "/cnpj URPR11"', reply_to_message_id=message.id)
 
-def mensagem_instrucoes():
+def mensagem_instrucoes(comandos=comandos):
     msg = ""
     for comando, descricao in comandos:
-        msg += f"/{comando}: {descricao}\n"
+        msg += f"/{comando}: {descricao}\n\n"
     return msg
 
 @bot.message_handler(commands=["start"])
@@ -936,6 +1019,15 @@ def handle_command(message):
     print(agora(), message.from_user.first_name, message.from_user.id, message.text)
     bot.send_message(message.from_user.id, "Seja bem-vindo ao @SuperFIIsBot!!!\n\n")
     bot.send_message(message.from_user.id, "Segue a lista de comandos disponíveis e suas respectivas descrições:\n\n"+mensagem_instrucoes())
+    bot.send_message(message.from_user.id, "Em caso de dúvidas ou sugestões, entre em contato diretamente com o desenvolvedor @gilmartaj, ficaremos felizes em ajudar!")
+    
+@bot.message_handler(commands=["mais"])
+def handle_command(message):
+    #print(message)
+    #bot.forward_message("-743953207", message.chat.id, message.id)
+    #bot.send_message("-743953207", f"{message.from_user.first_name} ({message.from_user.id}) {message.text}")
+    print(agora(), message.from_user.first_name, message.from_user.id, message.text)
+    bot.send_message(message.from_user.id, "Segue a lista de comandos extra que o bot disponibiliza:\n\n"+mensagem_instrucoes(mais_comandos))
     bot.send_message(message.from_user.id, "Em caso de dúvidas ou sugestões, entre em contato diretamente com o desenvolvedor @gilmartaj, ficaremos felizes em ajudar!")
     
 @bot.message_handler(commands=["ajuda"])
@@ -954,48 +1046,60 @@ def handle_command(message):
     print(agora(), message.from_user.first_name, message.from_user.id, message.text)
     bot.send_message(message.from_user.id, "Para dúvidas, sugestões e reportes de erros, envie uma mensagem direta para o desenvolvedor @gilmartaj, aqui mesmo pelo Telegram.")
 
+def thread_envio(doc, seguidores):
+    #print("Enviando...",seguidores)
+    try:
+        try:
+            #for seg in seguidores:
+                #seg = int(seg)
+                try:
+                    env2(doc, seguidores)
+                except:
+                    print("ERRO",doc["tipoDocumento"])
+                    traceback.print_exc()
+                    
+        except:
+            ultima_busca[f] = h
+            traceback.print_exc()
+        if doc["tipoDocumento"] == "Rendimentos e Amortizações":
+            #for seg in seguidores:
+                #seg = int(seg)
+           informar_proventos(doc, seguidores)
+        elif "Informe Mensal Estruturado" in doc["tipoDocumento"]:
+            informar_atualizacao_patrimonial(doc, seguidores)
+    except:
+        traceback.print_exc()
 
 def verificar():
-    #print("Verificando...")
+    print("Verificando...")
     for f in base.colunas():
         seguidores = base.buscar_seguidores(f)
         if len(seguidores) > 0:
-            #print(f, len(seguidores))
+            print(f, len(seguidores))
             h = ultima_busca[f]
             ultima_busca[f] = agora()
             documentos = []
             try:
                 documentos = buscar_documentos(buscar_cnpj(f), h)
+                #print(len(documentos))
             except:
                 pass
-            
             #if len(documentos) == 0:
              #   for seg in seguidores:
              #       seg = int(seg)
                     #bot.send_message(seg, f + " - Nenhum documento")
-            
+            #with concurrent.futures.ThreadPoolExecutor(max_workers = 5) as executor:
+            #with ThreadPool(processes = 5) as executor:
             for doc in documentos:
                 print(f, "-", doc["tipoDocumento"])
-                
                 doc["codigoFII"] = f
-                try:
-                    try:
-                        for seg in seguidores:
-                            seg = int(seg)
-                            try:
-                                env(doc, seg)
-                            except:
-                                pass
-                    except:
-                        ultima_busca[f] = h
-                    if doc["tipoDocumento"] == "Rendimentos e Amortizações":
-                        #for seg in seguidores:
-                            #seg = int(seg)
-                       informar_proventos(doc, seguidores)
-                    elif "Informe Mensal Estruturado" in doc["tipoDocumento"]:
-                        informar_atualizacao_patrimonial(doc, seguidores)
-                except:
-                    traceback.print_exc()
+                thread_envio(doc, seguidores)
+                    #Thread(target=thread_envio, args=(doc, seguidores), daemon=True).start()
+                    #executor.submit(thread_envio, doc, seguidores)
+                    #try:
+                        #executor.apply_async(thread_envio, args=(doc, seguidores))
+                    #except:
+                        #traceback.print_exc()
                     
 def verificar2():
     for f in base.colunas():
@@ -1047,6 +1151,7 @@ def verificacao_periodica():
 
     while True:
         try:
+            print("init")
             Thread(target=verificar, daemon=True).start()
             h = agora()
             if is_dia_util(h.date()) and h.hour > 7 and h.hour < 22:
@@ -1115,21 +1220,22 @@ def convv(v):
         return f"R$ {round(v, 2):.2f} ".replace(".", ",")
         
 def thread_teste():
-    docs = buscar_documentos(buscar_cnpj("FAED11"), desde=agora()-datetime.timedelta(days=30))  
+    docs = buscar_documentos(buscar_cnpj("CCME11"), desde=agora()-datetime.timedelta(days=30))  
     print(len(docs))
     for doc in docs:
-        doc["codigoFII"] = "FAED11"
-        env2(doc, ["-495713843", "556068392"])
+        print(doc["tipoDocumento"])
+        doc["codigoFII"] = "CCME11"
+        env2(doc, ["-495713843", "556068392","-743953207"])
         
 tz_info = agora().tzinfo
       
 ultima_busca = {}
 for f in base.colunas():
-    ultima_busca[f] = agora()
+    ultima_busca[f] = agora() #- datetime.timedelta(days=5)
     
 ultima_busca_infra = {}
 for f in base_infra.colunas():
-    ultima_busca_infra[f] = agora() - datetime.timedelta(hours=8)
+    ultima_busca_infra[f] = agora()# - datetime.timedelta(days=1)
     
 def verificar_infra():
     #print("Verificando...")
@@ -1269,7 +1375,7 @@ def informar_atualizacao_patrimonial(doc, usuarios):
 
 #Thread(target=thread_teste).start()
 #Thread(target=thread_fechamento, daemon=True).start()
-Thread(target=verificacao_periodica, daemon=True).start()
+Thread(target=verificacao_periodica, daemon=False).start()
 Thread(target=verificacao_periodica_infra, daemon=True).start()
 bot.set_my_commands([telebot.types.BotCommand(comando[0], comando[1]) for comando in comandos])
 
