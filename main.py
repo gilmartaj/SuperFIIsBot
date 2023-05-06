@@ -1075,7 +1075,7 @@ def verificar():
     for f in base.colunas():
         seguidores = base.buscar_seguidores(f)
         if len(seguidores) > 0:
-            print(f, len(seguidores))
+            #print(f, len(seguidores))
             h = ultima_busca[f]
             ultima_busca[f] = agora()
             documentos = []
