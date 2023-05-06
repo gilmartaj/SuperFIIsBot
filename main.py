@@ -51,7 +51,7 @@ gspread_credentials = {
 #client = gspread.service_account(filename='superfiisbot-9f67df851d9a.json')
 client = gspread.service_account_from_dict(gspread_credentials)
 
-sheet = client.open("SeguidoresFIIs").sheet1
+sheet = client.open("Teste").sheet1
 sheet_infra = client.open("SeguidoresFI-Infras").sheet1
 
 telebot.apihelper.SESSION_TIME_TO_LIVE = 60 * 15
@@ -79,7 +79,7 @@ comandos = [
     ("rend", 'Informa a última distribuição de proventos do fundo. Ex.: "/rend URPR11"'),
     ("seguir", 'Use para receber todos os documentos e informações de rendimentos de um FII. Ex.: "/seguir URPR11"'), 
     ("ultimos_documentos", 'Receba os documentos emitidos pelo fundo nos últimos 30 dias. Ex.: "/ultimos_documentos URPR11"'),
-    #("teste", "Teste"),
+    ("mais", "Mais comandos..."),
     ]
     
 mais_comandos = [
@@ -1005,10 +1005,10 @@ def handle_command(message):
     else:
         bot.send_message(message.chat.id, 'Uso incorreto. Para ver o CNPJ um fundo envie /cnpj CODIGO_FUNDO. Ex.: "/cnpj URPR11"', reply_to_message_id=message.id)
 
-def mensagem_instrucoes():
+def mensagem_instrucoes(comandos=comandos):
     msg = ""
     for comando, descricao in comandos:
-        msg += f"/{comando}: {descricao}\n"
+        msg += f"/{comando}: {descricao}\n\n"
     return msg
 
 @bot.message_handler(commands=["start"])
@@ -1019,6 +1019,15 @@ def handle_command(message):
     print(agora(), message.from_user.first_name, message.from_user.id, message.text)
     bot.send_message(message.from_user.id, "Seja bem-vindo ao @SuperFIIsBot!!!\n\n")
     bot.send_message(message.from_user.id, "Segue a lista de comandos disponíveis e suas respectivas descrições:\n\n"+mensagem_instrucoes())
+    bot.send_message(message.from_user.id, "Em caso de dúvidas ou sugestões, entre em contato diretamente com o desenvolvedor @gilmartaj, ficaremos felizes em ajudar!")
+    
+@bot.message_handler(commands=["mais"])
+def handle_command(message):
+    #print(message)
+    #bot.forward_message("-743953207", message.chat.id, message.id)
+    #bot.send_message("-743953207", f"{message.from_user.first_name} ({message.from_user.id}) {message.text}")
+    print(agora(), message.from_user.first_name, message.from_user.id, message.text)
+    bot.send_message(message.from_user.id, "Segue a lista de comandos extra que o bot disponibiliza:\n\n"+mensagem_instrucoes(mais_comandos))
     bot.send_message(message.from_user.id, "Em caso de dúvidas ou sugestões, entre em contato diretamente com o desenvolvedor @gilmartaj, ficaremos felizes em ajudar!")
     
 @bot.message_handler(commands=["ajuda"])
@@ -1038,7 +1047,7 @@ def handle_command(message):
     bot.send_message(message.from_user.id, "Para dúvidas, sugestões e reportes de erros, envie uma mensagem direta para o desenvolvedor @gilmartaj, aqui mesmo pelo Telegram.")
 
 def thread_envio(doc, seguidores):
-    print("Enviando...",seguidores)
+    #print("Enviando...",seguidores)
     try:
         try:
             #for seg in seguidores:
@@ -1072,7 +1081,7 @@ def verificar():
             documentos = []
             try:
                 documentos = buscar_documentos(buscar_cnpj(f), h)
-                print(len(documentos))
+                #print(len(documentos))
             except:
                 pass
             #if len(documentos) == 0:
