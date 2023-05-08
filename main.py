@@ -377,7 +377,7 @@ def buscar_documentos_infra(token, desde=""):
     for d in results:
         de = d["date"]
         #print(datetime.datetime(year=int(de[0:4]), month=int(de[5:7]), day=int(de[8:10]), hour=int(de[11:13]), minute=int(de[14:16])), desde)
-        if datetime.datetime(year=int(de[0:4]), month=int(de[5:7]), day=int(de[8:10]), hour=int(de[11:13]), minute=int(de[14:16]), tzinfo=tz_info) < desde:
+        if datetime.datetime(year=int(de[0:4]), month=int(de[5:7]), day=int(de[8:10]), hour=int(de[11:13]), minute=int(de[14:16]), tzinfo=tz_info) <= desde:
             break
         lista.append(d)
         print(d)
@@ -392,11 +392,15 @@ async def enviar_documento_1(usuario, nome_doc, caption,client):
             
 def compartilhar_documento_enviado(usuarios, file_id, caption):
     for u in usuarios:
+        try:
             bot.send_document(
             u,
             file_id,
             caption=caption
             )
+            time.sleep(0.1)
+        except:
+            pass
 
 def baixar_documento_1(link, nome_doc, cabecalhos={}):
     with open(nome_doc, "wb") as f:
@@ -978,7 +982,8 @@ def get_ticker_variacao(ticker):
     return (valor, variacao)
        
         
-@bot.message_handler(regexp=r"(\s)*/cotacao.* [A-Za-z]{4}11")
+#@bot.message_handler(regexp=r"(\s)*/cotacao.* [A-Za-z]{4}11")
+@bot.message_handler(commands=["cotacao"])
 def handle_command(message):
     try:
         print(agora(), message.from_user.first_name, message.text)
@@ -1229,7 +1234,7 @@ tz_info = agora().tzinfo
       
 ultima_busca = {}
 for f in base.colunas():
-    ultima_busca[f] = agora() - datetime.timedelta(hours=1)
+    ultima_busca[f] = agora() #- datetime.timedelta(days=5)
     
 ultima_busca_infra = {}
 for f in base_infra.colunas():
@@ -1242,7 +1247,7 @@ def verificar_infra():
         if len(seguidores) > 0:
             #print(f, len(seguidores))
             h = ultima_busca_infra[f]
-            ultima_busca_infra[f] = agora()
+            #ultima_busca_infra[f] = agora()
             documentos = []
             try:
                 documentos = buscar_documentos_infra(tokens_infra[f], h)
@@ -1254,6 +1259,8 @@ def verificar_infra():
                     print(f,doc)
                     env_infra(f, doc, seguidores)
                     #env_infra(f, doc, seguidores)
+                    de = doc["date"]
+                    ultima_busca_infra[f] = datetime.datetime(year=int(de[0:4]), month=int(de[5:7]), day=int(de[8:10]), hour=int(de[11:13]), minute=int(de[14:16]), tzinfo=tz_info)
                 except:
                     ultima_busca_infra[f] = h
 
