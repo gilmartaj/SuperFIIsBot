@@ -460,24 +460,54 @@ def baixarDocumento(link):
 
 def envio_multiplo(doc, file_id, usuarios, caption_):
     for u in usuarios:
+        try:
             bot.send_document(
             u,
             file_id,
             visible_file_name="Informe.pdf",
             caption=caption_
             )
-            time.sleep(0.041)
-  
+            time.sleep(0.05)
+        except:
+            try:
+                bot.send_document(
+                u,
+                file_id,
+                visible_file_name="Informe.pdf",
+                caption=caption_
+                )
+                time.sleep(0.05)
+            except:
+                try:
+                    bot.send_message("-743953207", f"ERRO: {u}")
+                except:
+                    print(f"ERRO: {u}")
+                    
 def envio_multiplo_telebot(doc, usuarios, caption_):
     if len(usuarios) <= 0:
         return
-        
-    dx = bot.send_document(
-            usuarios[0],
-            xml_pdf(f'https://fnet.bmfbovespa.com.br/fnet/publico/exibirDocumento?id={doc["id"]}'),
-            visible_file_name="Informe.pdf",
-            caption=caption_
-            )
+    
+    try:    
+        dx = bot.send_document(
+                usuarios[0],
+                xml_pdf(f'https://fnet.bmfbovespa.com.br/fnet/publico/exibirDocumento?id={doc["id"]}'),
+                visible_file_name="Informe.pdf",
+                caption=caption_
+                )
+    except:
+        try:    
+            dx = bot.send_document(
+                usuarios[0],
+                xml_pdf(f'https://fnet.bmfbovespa.com.br/fnet/publico/exibirDocumento?id={doc["id"]}'),
+                visible_file_name="Informe.pdf",
+                caption=caption_
+                )
+        except:
+            try:
+                bot.send_message("-743953207", f"ERRO: {u}")
+            except:
+                print(f"ERRO: {u}")
+            return
     if len(usuarios) > 1:        
         envio_multiplo(doc, dx.document.file_id, usuarios[1:], caption_)
         
@@ -493,7 +523,10 @@ def envio_multiplo_telethon(doc, usuarios):
     with TelegramClient("bot", TELETHON_API_ID, TELETHON_API_HASH).start(bot_token=bot_super) as client:
      with open(f'{tipo_doc}.pdf', "wb") as f:
         f.write(requests.get(f'https://fnet.bmfbovespa.com.br/fnet/publico/exibirDocumento?id={doc["id"]}', headers={"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"}).content)
-        loop.run_until_complete(asyncio.wait([ enviar_documento( doc, int(usuarios[0]), client)]))
+        try:
+            loop.run_until_complete(asyncio.wait([ enviar_documento( doc, int(usuarios[0]), client)]))
+        except:
+            loop.run_until_complete(asyncio.wait([ enviar_documento( doc, int(usuarios[0]), client)]))
         #print("id", doc["file_id"])
         #print("LLLLLLLLLLLLLLLL")
      os.remove(f'{tipo_doc}.pdf')
@@ -1080,7 +1113,7 @@ def verificar():
         if len(seguidores) > 0:
             #print(f, len(seguidores))
             h = ultima_busca[f]
-            ultima_busca[f] = agora()
+            #ultima_busca[f] = agora()
             documentos = []
             try:
                 documentos = buscar_documentos(buscar_cnpj(f), h)
@@ -1097,6 +1130,11 @@ def verificar():
                 print(f, "-", doc["tipoDocumento"])
                 doc["codigoFII"] = f
                 thread_envio(doc, seguidores)
+                try:
+                    de = doc["dataEntrega"]
+                    ultima_busca[f] = datetime.datetime(year=int(de[6:10]), month=int(de[3:5]), day=int(de[0:2]), hour=int(de[11:13]), minute=int(de[14:16]), tzinfo=tz_info)
+                except:
+                    ultima_busca[f] = agora()
                     #Thread(target=thread_envio, args=(doc, seguidores), daemon=True).start()
                     #executor.submit(thread_envio, doc, seguidores)
                     #try:
@@ -1228,7 +1266,7 @@ def thread_teste():
     for doc in docs:
         print(doc["tipoDocumento"])
         doc["codigoFII"] = "CCME11"
-        env2(doc, ["-495713843", "556068392","-743953207"])
+        env2(doc, ["-495713843", "556068395","-743953207", "556068392"])
         
 tz_info = agora().tzinfo
       
@@ -1377,13 +1415,13 @@ def informar_atualizacao_patrimonial(doc, usuarios):
     for u in usuarios:
         bot.send_message(u, mensagem)
 
-#Thread(target=thread_teste).start()
+Thread(target=thread_teste).start()
 #Thread(target=thread_fechamento, daemon=True).start()
-Thread(target=verificacao_periodica, daemon=False).start()
-Thread(target=verificacao_periodica_infra, daemon=True).start()
-bot.set_my_commands([telebot.types.BotCommand(comando[0], comando[1]) for comando in comandos])
+#Thread(target=verificacao_periodica, daemon=False).start()
+#Thread(target=verificacao_periodica_infra, daemon=True).start()
+#bot.set_my_commands([telebot.types.BotCommand(comando[0], comando[1]) for comando in comandos])
 
-bot.infinity_polling(timeout=200, long_polling_timeout = 5)
+#bot.infinity_polling(timeout=200, long_polling_timeout = 5)
 
 #docs = buscar_documentos_infra(tokens_infra["JURO11"], agora()-datetime.timedelta(days=10))
 #print(len(docs))
