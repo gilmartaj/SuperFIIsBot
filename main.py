@@ -1415,13 +1415,13 @@ def informar_atualizacao_patrimonial(doc, usuarios):
     for u in usuarios:
         bot.send_message(u, mensagem)
 
-Thread(target=thread_teste).start()
+#Thread(target=thread_teste).start()
 #Thread(target=thread_fechamento, daemon=True).start()
-#Thread(target=verificacao_periodica, daemon=False).start()
-#Thread(target=verificacao_periodica_infra, daemon=True).start()
-#bot.set_my_commands([telebot.types.BotCommand(comando[0], comando[1]) for comando in comandos])
+Thread(target=verificacao_periodica, daemon=False).start()
+Thread(target=verificacao_periodica_infra, daemon=True).start()
+bot.set_my_commands([telebot.types.BotCommand(comando[0], comando[1]) for comando in comandos])
 
-#bot.infinity_polling(timeout=200, long_polling_timeout = 5)
+bot.infinity_polling(timeout=200, long_polling_timeout = 5)
 
 #docs = buscar_documentos_infra(tokens_infra["JURO11"], agora()-datetime.timedelta(days=10))
 #print(len(docs))
