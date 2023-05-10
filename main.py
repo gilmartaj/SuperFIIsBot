@@ -83,7 +83,9 @@ comandos = [
     ]
     
 mais_comandos = [
+    ("fnet", "Link para a página de documentos referente a um fundo.\nEx.: /fnet CYCR11"),
     ("pat", "Mostra informações sobre atualização patrimonial de um fundo.\nEx.: /pat CYCR11"),
+    ("reg", "Use para receber o último regulamento publicado por um fundo. \nEx.: /reg CYCR11"),
     ("relat", "Use para receber o último relatório gerencial publicado por um fundo. \nEx.: /relat CYCR11"),
     ]
 
@@ -347,7 +349,7 @@ def buscar_documentos(cnpj, desde=""):
     for d in r.json()["data"]:
         de = d["dataEntrega"]
         #print(datetime.datetime(year=int(de[6:10]), month=int(de[3:5]), day=int(de[0:2]), hour=int(de[11:13])), desde)
-        if datetime.datetime(year=int(de[6:10]), month=int(de[3:5]), day=int(de[0:2]), hour=int(de[11:13]), minute=int(de[14:16]), tzinfo=tz_info) < desde:
+        if datetime.datetime(year=int(de[6:10]), month=int(de[3:5]), day=int(de[0:2]), hour=int(de[11:13]), minute=int(de[14:16]), tzinfo=tz_info) <= desde:
             break
         if d["status"] == "AC":
             lista.append(d)
@@ -452,6 +454,12 @@ def buscar_ultimo_relatorio_gerencial(cnpj):
     r = requests.get(f"https://fnet.bmfbovespa.com.br/fnet/publico/pesquisarGerenciadorDocumentosDados?d=0&s=0&l=1&o%5B0%5D%5BdataEntrega%5D=desc&cnpjFundo={cnpj}&idCategoriaDocumento=7&idTipoDocumento=9")
     if len(r.json()["data"]) > 0:
         print("Enc")
+        return r.json()["data"][0]
+    return None
+    
+def buscar_ultimo_regulamento(cnpj):
+    r = requests.get(f"https://fnet.bmfbovespa.com.br/fnet/publico/pesquisarGerenciadorDocumentosDados?d=0&s=0&l=1&o%5B0%5D%5BdataEntrega%5D=desc&cnpjFundo={cnpj}&idCategoriaDocumento=5")
+    if len(r.json()["data"]) > 0:
         return r.json()["data"][0]
     return None
         
@@ -779,10 +787,52 @@ def handle_command(message):
     elif len(message.text.strip().split()) == 1:
         bot.send_message(message.chat.id, f'Informe o código de negociação do fundo que você deseja ver o último relatório gerencial publicado.\nEx.: "/relat CYCR11".', reply_to_message_id=message.id)
     else:
-        bot.send_message(message.chat.id, f'Uso incorreto. Para ver o último relatório gerencial de um fundo, envie /rend CODIGO_FUNDO.\nEx.: "/rend CYCR11".', reply_to_message_id=message.id)
+        bot.send_message(message.chat.id, f'Uso incorreto. Para ver o último relatório gerencial de um fundo, envie /relat CODIGO_FUNDO.\nEx.: "/relat CYCR11".', reply_to_message_id=message.id)
 
+@bot.message_handler(commands=["reg"])
+def handle_command(message):
+    #cmd = message.text.split()[0]
+    #print(message)
+    print(agora(), message.from_user.first_name, message.text)
+    if len(message.text.strip().split()) == 2:
+        ticker = message.text.split()[1].strip().upper()
+        if not ticker in base.colunas():
+            if ticker in ("BODB11", "BDIF11", "CPTI11", "BIDB11", "IFRA11", "KDIF11", "OGIN11", "RBIF11", "CDII11", "JURO11", "SNID11", "XPID11"):
+                bot.send_message(message.chat.id, f"Desculpe, mas no momento esta função não está disponível para FI-Infras.", reply_to_message_id=message.id)
+                return
+            bot.send_message(message.chat.id, f"Não encontramos em nossa base de dados o fundo {ticker}.", reply_to_message_id=message.id)
+            return
+        doc_reg = buscar_ultimo_regulamento(buscar_cnpj(ticker))
+        if doc_reg:
+            bot.send_message(message.chat.id, f"Buscando...")
+            doc_reg["codigoFII"] = ticker
+            env2(doc_reg, [message.from_user.id])
+        else:
+            bot.send_message(message.chat.id, f'Não encontramos informações sobre regulamento publicado por este fundo.', reply_to_message_id=message.id)    
+    elif len(message.text.strip().split()) == 1:
+        bot.send_message(message.chat.id, f'Informe o código de negociação do fundo que você deseja ver o último regulamento publicado.\nEx.: "/reg CYCR11".', reply_to_message_id=message.id)
+    else:
+        bot.send_message(message.chat.id, f'Uso incorreto. Para ver o último regulamento publicado por um fundo, envie /reg CODIGO_FUNDO.\nEx.: "/reg CYCR11".', reply_to_message_id=message.id)
 
-
+@bot.message_handler(commands=["fnet"])
+def handle_command(message):
+    #cmd = message.text.split()[0]
+    #print(message)
+    print(agora(), message.from_user.first_name, message.text)
+    if len(message.text.strip().split()) == 2:
+        ticker = message.text.split()[1].strip().upper()
+        if not ticker in base.colunas():
+            if ticker in ("BODB11", "BDIF11", "CPTI11", "BIDB11", "IFRA11", "KDIF11", "OGIN11", "RBIF11", "CDII11", "JURO11", "SNID11", "XPID11"):
+                bot.send_message(message.chat.id, f"https://www.b3.com.br/pt_br/produtos-e-servicos/negociacao/renda-variavel/fundos-de-investimentos/fi-infra/fi-infra-listados/", reply_to_message_id=message.id)
+                return
+            bot.send_message(message.chat.id, f"Não encontramos em nossa base de dados o fundo {ticker}.", reply_to_message_id=message.id)
+            return
+        msg = f"https://fnet.bmfbovespa.com.br/fnet/publico/abrirGerenciadorDocumentosCVM?cnpjFundo={buscar_cnpj(ticker)}"
+        bot.send_message(message.chat.id, msg, reply_to_message_id=message.id) 
+    elif len(message.text.strip().split()) == 1:
+        bot.send_message(message.chat.id, f'Informe o código do fundo.\nEx.: "/reg CYCR11".', reply_to_message_id=message.id)
+    else:
+        bot.send_message(message.chat.id, f'Uso incorreto. Para aproveitar essa função, envie /fnet CODIGO_FUNDO.\nEx.: "/fnet CYCR11".', reply_to_message_id=message.id)
             
 @bot.message_handler(commands=["docs", "ultimos_documentos"])
 def handle_command(message):
