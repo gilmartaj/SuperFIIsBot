@@ -227,17 +227,42 @@ def informar_proventos(doc, usuarios):
             bot.send_message(u, mensagem)
         except:
             pass
+            
+def informar_provento_infra(fundo, valor, data_base, data_pagamento):
+    mensagem = "Informação de proventos:"
+    mensagem += f'\n\n\U0001F3D7Código: {fundo}'
+    mensagem += f'\n\U0001F4B0Valor: R$ {conv_monet(valor)}'
+    mensagem += f'\n\U0001F5D3Data base: {data_base}'
+    mensagem += f'\n\U0001F4B8Data de pagamento: {data_pagamento}'
+    
+    mensagem += "\n\n@SuperFIIsBot\n@RepositorioDeFIIs"
+    
+    usuarios = base_infra.buscar_seguidores(fundo)
+    #usuarios = ["556068392","-743953207","556068392"]
+    for u in usuarios:
+        try:
+            bot.send_message(u, mensagem)
+        except:
+            try:
+                bot.send_message(u, mensagem)
+            except:
+                pass
 
 def informar_fechamento2():
     dic = {}
     usuarios = base.buscar_todos_usuarios()
+    usuarios.extend(base_infra.buscar_todos_usuarios())
+    usuarios = list(set(usuarios))
     usuarios.remove("-1001894911077")
     usuarios.append("-1001894911077")
     #usuarios.insert(0, "556068392")
+    #usuarios = ["556068392"]
     print(usuarios)
 
     for usuario in usuarios:#usuarios:#base.buscar_todos_seguidores:
         fs = base.buscar_seguidos(usuario)
+        fs.extend(base_infra.buscar_seguidos(usuario))
+        fs.sort()
         if len(fs) == 0:
             continue
         msg = mensagem_lista_fechamento(fs, dic)
@@ -268,9 +293,9 @@ def mensagem_lista_fechamento(fundos, dic):
                     v, variacao = dic[f]
                     #print("Já lá")
                 else:
-                    v, variacao = get_ticker_variacao2(f)
+                    v, variacao = get_ticker_variacao3(f)
                     time.sleep(5)
-                    if not v or v=="0,00":
+                    if not v or v.startswith("0,00"):
                         continue
                     dic[f] = (v, variacao)
                 l = f"{f}: R$ {v}".replace(".",",")
@@ -703,7 +728,7 @@ def handle_command(message):
     bot.send_message(message.from_user.id, "https://www.seudinheiro.com/2023/bolsa-dolar/ameaca-de-novo-calote-derruba-cotas-de-cinco-fundos-imobiliarios-na-b3-lvit/")"""
     try:
         ticker = message.text.split()[1].strip().upper()
-        val, var = get_ticker_variacao2(ticker)
+        val, var = get_ticker_variacao3(ticker)
         bot.send_message(message.chat.id, str(val)+"\n"+str(var), reply_to_message_id=message.id)
     except:
         traceback.print_exc()
@@ -1028,6 +1053,44 @@ def get_ticker_variacao2(ticker):
     
     return (valor, variacao)
     
+def get_ticker_variacao3(ticker):
+    valor = None
+    variacao = ""
+    #if ticker.upper() == "KNHF11":
+        #return (valor, variacao)
+    headers = {'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/111.0','Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8'} 
+    
+    url = f"https://finance.yahoo.com/quote/{ticker}.SA/"
+    try:
+
+        res = requests.get(url, headers=headers)
+        html_page = res.text       
+        soup = BeautifulSoup(html_page, 'html.parser')
+        #print(soup.prettify())
+        valor = soup.select_one(f'[data-field="regularMarketPrice"][data-symbol="{ticker}.SA"]').text.strip().replace(".",",").replace("(","").replace(")","")
+        variacao = soup.select_one(f'[data-field="regularMarketChangePercent"][data-symbol="{ticker}.SA"]').text.strip().replace(".",",").replace("(","").replace(")","")
+        #if len(variacao) > 0 and not variacao.startswith("-") and variacao != "0,00%":
+            #variacao = "+" + variacao
+    except:
+        #traceback.print_exc()
+        time.sleep(5)
+        try:
+        #    proxies = {'http': 'http://200.187.70.223:3128',
+        #'https': 'http://200.187.70.223:3128'
+        #}
+            #res = requests.get(url, headers=headers,proxies=proxies,verify=False)
+            res = requests.get(url, headers=headers)
+            html_page = res.text       
+            soup = BeautifulSoup(html_page, 'html.parser')
+            valor = soup.select_one(f'[data-field="regularMarketPrice"][data-symbol="{ticker}.SA"]').text.strip().replace(".",",").replace("(","").replace(")","")
+            variacao = soup.select_one(f'[data-field="regularMarketChangePercent"][data-symbol="{ticker}.SA"]').text.strip().replace(".",",").replace("(","").replace(")","")
+            #if len(variacao) > 0 and not variacao.startswith("-") and variacao != "0,00%":
+                #variacao = "+" + variacao
+        except:
+            pass
+    
+    return (valor, variacao)
+    
 def get_ticker_variacao(ticker):
     valor = None
     variacao = ""
@@ -1131,6 +1194,25 @@ def handle_command(message):
 def handle_command(message):
     print(agora(), message.from_user.first_name, message.from_user.id, message.text)
     bot.send_message(message.from_user.id, "Para dúvidas, sugestões e reportes de erros, envie uma mensagem direta para o desenvolvedor @gilmartaj, aqui mesmo pelo Telegram.")
+    
+@bot.message_handler(commands=["infprv"])
+def handle_command(message):
+    print(agora(), message.from_user.first_name, message.from_user.id, message.text)
+    if str(message.from_user.id) == "556068392":
+        parts = message.text.split()
+        if parts[1] not in base_infra.colunas():
+            bot.send_message(message.from_user.id, "Fundo inválido!", reply_to_message_id=message.id)
+            return
+        if len(parts) != 5:
+            bot.send_message(message.from_user.id, "Parâmetros inválidos!", reply_to_message_id=message.id)
+            return
+        try:
+            informar_provento_infra(parts[1], parts[2].replace(",","."), parts[3], parts[4])
+        except:
+            bot.send_message(message.from_user.id, "Aconteceu algum erro...", reply_to_message_id=message.id)
+            return
+        bot.send_message(message.from_user.id, "Pronto!", reply_to_message_id=message.id)
+            
 
 def thread_envio(doc, seguidores):
     #print("Enviando...",seguidores)
@@ -1280,7 +1362,7 @@ def is_dia_util(data):
     
 def thread_fechamento():
     h = agora()
-    parada = datetime.datetime(h.year, h.month, h.day, 18, 0, tzinfo=h.tzinfo)
+    parada = datetime.datetime(h.year, h.month, h.day, 18, 30, tzinfo=h.tzinfo)
     if h.hour >= 18:
         parada += datetime.timedelta(days=1)
         
@@ -1445,7 +1527,7 @@ def informar_atualizacao_patrimonial(doc, usuarios):
         valz = f"0,00%"
         mensagem += f'\n\U0001F4C9Variação: {valz}'
         
-    vp = f'R$ {round(vp*100//1/100,2)}'.replace(".",",")
+    vp = f'R$ {round(vp*100//1/100,2):.2f}'.replace(".",",")
     
     pvp = f"{pvp:.2f}".replace(".",",")
     
@@ -1466,9 +1548,10 @@ def informar_atualizacao_patrimonial(doc, usuarios):
         bot.send_message(u, mensagem)
 
 #Thread(target=thread_teste).start()
-#Thread(target=thread_fechamento, daemon=True).start()
+Thread(target=thread_fechamento, daemon=True).start()
 Thread(target=verificacao_periodica, daemon=False).start()
 Thread(target=verificacao_periodica_infra, daemon=True).start()
+#Thread(target=informar_fechamento2, daemon=True).start()
 bot.set_my_commands([telebot.types.BotCommand(comando[0], comando[1]) for comando in comandos])
 
 bot.infinity_polling(timeout=200, long_polling_timeout = 5)
