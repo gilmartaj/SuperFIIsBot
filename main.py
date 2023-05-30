@@ -84,6 +84,8 @@ comandos = [
     
 mais_comandos = [
     ("fnet", "Link para a página de documentos referente a um fundo.\nEx.: /fnet CYCR11"),
+    ("infm", "Use para receber o último informe mensal publicado por um fundo. \nEx.: /infm CYCR11"),
+    ("inft", "Use para receber o último informe trimestral publicado por um fundo. \nEx.: /inft CYCR11"),
     ("pat", "Mostra informações sobre atualização patrimonial de um fundo.\nEx.: /pat CYCR11"),
     ("reg", "Use para receber o último regulamento publicado por um fundo. \nEx.: /reg CYCR11"),
     ("relat", "Use para receber o último relatório gerencial publicado por um fundo. \nEx.: /relat CYCR11"),
@@ -113,6 +115,9 @@ class BaseCache:
             for j, cel in enumerate(self.planilha[k]):
                 if cel == "":
                     self.celulas_vazias[k].append((j+2,self.indices[k]))
+        for f in self.planilha.keys():
+            while self.planilha[f][-1] == "":
+                del self.planilha[f][-1]
         #print(self.planilha)
         #print(self.celulas_vazias)
         
@@ -474,6 +479,12 @@ def buscar_ultimo_informe_mensal_estruturado(cnpj):
         return r.json()["data"][0]
     return None
     
+def buscar_ultimo_informe_trimestral_estruturado(cnpj):
+    r = requests.get(f"https://fnet.bmfbovespa.com.br/fnet/publico/pesquisarGerenciadorDocumentosDados?d=0&s=0&l=1&o%5B0%5D%5BdataEntrega%5D=desc&cnpjFundo={cnpj}&idCategoriaDocumento=6&idTipoDocumento=45")
+    if len(r.json()["data"]) > 0:
+        return r.json()["data"][0]
+    return None
+    
     
 def buscar_ultimo_relatorio_gerencial(cnpj):
     r = requests.get(f"https://fnet.bmfbovespa.com.br/fnet/publico/pesquisarGerenciadorDocumentosDados?d=0&s=0&l=1&o%5B0%5D%5BdataEntrega%5D=desc&cnpjFundo={cnpj}&idCategoriaDocumento=7&idTipoDocumento=9")
@@ -813,6 +824,56 @@ def handle_command(message):
         bot.send_message(message.chat.id, f'Informe o código de negociação do fundo que você deseja ver o último relatório gerencial publicado.\nEx.: "/relat CYCR11".', reply_to_message_id=message.id)
     else:
         bot.send_message(message.chat.id, f'Uso incorreto. Para ver o último relatório gerencial de um fundo, envie /relat CODIGO_FUNDO.\nEx.: "/relat CYCR11".', reply_to_message_id=message.id)
+        
+@bot.message_handler(commands=["infm"])
+def handle_command(message):
+    #cmd = message.text.split()[0]
+    #print(message)
+    print(agora(), message.from_user.first_name, message.text)
+    if len(message.text.strip().split()) == 2:
+        ticker = message.text.split()[1].strip().upper()
+        if not ticker in base.colunas():
+            if ticker in ("BODB11", "BDIF11", "CPTI11", "BIDB11", "IFRA11", "KDIF11", "OGIN11", "RBIF11", "CDII11", "JURO11", "SNID11", "XPID11"):
+                bot.send_message(message.chat.id, f"Desculpe, mas no momento esta função não está disponível para FI-Infras.", reply_to_message_id=message.id)
+                return
+            bot.send_message(message.chat.id, f"Não encontramos em nossa base de dados o fundo {ticker}.", reply_to_message_id=message.id)
+            return
+        doc_infm = buscar_ultimo_informe_mensal_estruturado(buscar_cnpj(ticker))
+        if doc_infm:
+            bot.send_message(message.chat.id, f"Buscando...")
+            doc_infm["codigoFII"] = ticker
+            env2(doc_infm, [message.from_user.id])
+        else:
+            bot.send_message(message.chat.id, f'Não encontramos informações sobre informes mensais deste fundo.', reply_to_message_id=message.id)    
+    elif len(message.text.strip().split()) == 1:
+        bot.send_message(message.chat.id, f'Informe o código de negociação do fundo que você deseja ver o último informe mensal publicado.\nEx.: "/infm CYCR11".', reply_to_message_id=message.id)
+    else:
+        bot.send_message(message.chat.id, f'Uso incorreto. Para ver o último informe mensal de um fundo, envie /infm CODIGO_FUNDO.\nEx.: "/infm CYCR11".', reply_to_message_id=message.id)
+        
+@bot.message_handler(commands=["inft"])
+def handle_command(message):
+    #cmd = message.text.split()[0]
+    #print(message)
+    print(agora(), message.from_user.first_name, message.text)
+    if len(message.text.strip().split()) == 2:
+        ticker = message.text.split()[1].strip().upper()
+        if not ticker in base.colunas():
+            if ticker in ("BODB11", "BDIF11", "CPTI11", "BIDB11", "IFRA11", "KDIF11", "OGIN11", "RBIF11", "CDII11", "JURO11", "SNID11", "XPID11"):
+                bot.send_message(message.chat.id, f"Desculpe, mas no momento esta função não está disponível para FI-Infras.", reply_to_message_id=message.id)
+                return
+            bot.send_message(message.chat.id, f"Não encontramos em nossa base de dados o fundo {ticker}.", reply_to_message_id=message.id)
+            return
+        doc_inft = buscar_ultimo_informe_trimestral_estruturado(buscar_cnpj(ticker))
+        if doc_inft:
+            bot.send_message(message.chat.id, f"Buscando...")
+            doc_inft["codigoFII"] = ticker
+            env2(doc_inft, [message.from_user.id])
+        else:
+            bot.send_message(message.chat.id, f'Não encontramos informações sobre informes trimestrais deste fundo.', reply_to_message_id=message.id)    
+    elif len(message.text.strip().split()) == 1:
+        bot.send_message(message.chat.id, f'Informe o código de negociação do fundo que você deseja ver o último informe trimestral publicado.\nEx.: "/inft CYCR11".', reply_to_message_id=message.id)
+    else:
+        bot.send_message(message.chat.id, f'Uso incorreto. Para ver o último informe trimestral de um fundo, envie /inft CODIGO_FUNDO.\nEx.: "/inft CYCR11".', reply_to_message_id=message.id)
 
 @bot.message_handler(commands=["reg"])
 def handle_command(message):
@@ -911,8 +972,13 @@ def handle_command(message):
         elif r == 1:
             bot.send_message(message.chat.id, "Você já segue esse fundo. Assim que forem divulgados novos documentos ou comunicados, lhe enviaremos.", reply_to_message_id=message.id)
         elif r == -1:
-            if ticker in ("BODB11", "BDIF11", "CPTI11", "BIDB11", "IFRA11", "KDIF11", "OGIN11", "RBIF11", "CDII11", "JURO11", "SNID11", "XPID11"):
-                bot.send_message(message.chat.id, f"Desculpe, mas no momento não temos a opção de seguir FI-Infras.", reply_to_message_id=message.id)
+            if ticker in base_infra.colunas():
+                #bot.send_message(message.chat.id, f"Desculpe, mas no momento não temos a opção de seguir FI-Infras.", reply_to_message_id=message.id)
+                r = base_infra.inserir(ticker, str(message.chat.id))
+                if r == 0:
+                    bot.send_message(message.chat.id, f"Parabéns! Agora você receberá todos os documentos e comunicados referentes ao fundo {ticker}.", reply_to_message_id=message.id)
+                elif r == 1:
+                    bot.send_message(message.chat.id, "Você já segue esse fundo. Assim que forem divulgados novos documentos ou comunicados, lhe enviaremos.", reply_to_message_id=message.id)
             else:
                 bot.send_message(message.chat.id, f"Não encontramos em nossa base de dados o fundo {ticker}.", reply_to_message_id=message.id)
     else:
@@ -932,13 +998,21 @@ def handle_command(message):
     elif r == 1:
         bot.send_message(message.chat.id, f'Você ainda não segue esse fundo. Para seguir envie: "/seguir {ticker}"', reply_to_message_id=message.id)
     elif r == -1:
-        bot.send_message(message.chat.id, f"Não encontramos em nossa base de dados o fundo {ticker}.", reply_to_message_id=message.id)
+        r = base_infra.remover(ticker, str(message.from_user.id))
+        if r == 0:
+            bot.send_message(message.chat.id, f"Pronto! Você não receberá mais informações sobre o fundo {ticker}.", reply_to_message_id=message.id)
+        elif r == 1:
+            bot.send_message(message.chat.id, f'Você ainda não segue esse fundo. Para seguir envie: "/seguir {ticker}"', reply_to_message_id=message.id)
+        elif r == -1:
+            bot.send_message(message.chat.id, f"Não encontramos em nossa base de dados o fundo {ticker}.", reply_to_message_id=message.id)
         
 @bot.message_handler(commands=["fundos_seguidos"])
 def handle_command(message):
     #print(message)
     print(message.from_user.first_name, message.text)
     fs = base.buscar_seguidos(str(message.from_user.id))
+    fs.extend(base_infra.buscar_seguidos(str(message.from_user.id)))
+    fs.sort()
     if len(fs) == 0:
         bot.send_message(message.chat.id, f"Você ainda não está seguindo nenhum fundo. Para começar, utilize o comando /seguir", reply_to_message_id=message.id)
     else:
@@ -1362,8 +1436,8 @@ def is_dia_util(data):
     
 def thread_fechamento():
     h = agora()
-    parada = datetime.datetime(h.year, h.month, h.day, 18, 30, tzinfo=h.tzinfo)
-    if h.hour >= 18:
+    parada = datetime.datetime(h.year, h.month, h.day, 19, 5, tzinfo=h.tzinfo)
+    if h.hour >= 19:
         parada += datetime.timedelta(days=1)
         
     #parada = agora() + datetime.timedelta(seconds=10)
@@ -1404,11 +1478,11 @@ tz_info = agora().tzinfo
       
 ultima_busca = {}
 for f in base.colunas():
-    ultima_busca[f] = agora() #- datetime.timedelta(days=5)
+    ultima_busca[f] = agora() - datetime.timedelta(minutes=30)
     
 ultima_busca_infra = {}
 for f in base_infra.colunas():
-    ultima_busca_infra[f] = agora()# - datetime.timedelta(days=1)
+    ultima_busca_infra[f] = agora() - datetime.timedelta(minutes=30)
     
 def verificar_infra():
     #print("Verificando...")
@@ -1548,9 +1622,9 @@ def informar_atualizacao_patrimonial(doc, usuarios):
         bot.send_message(u, mensagem)
 
 #Thread(target=thread_teste).start()
-Thread(target=thread_fechamento, daemon=True).start()
 Thread(target=verificacao_periodica, daemon=False).start()
 Thread(target=verificacao_periodica_infra, daemon=True).start()
+Thread(target=thread_fechamento, daemon=True).start()
 #Thread(target=informar_fechamento2, daemon=True).start()
 bot.set_my_commands([telebot.types.BotCommand(comando[0], comando[1]) for comando in comandos])
 
