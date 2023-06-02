@@ -1478,7 +1478,7 @@ tz_info = agora().tzinfo
       
 ultima_busca = {}
 for f in base.colunas():
-    ultima_busca[f] = agora() - datetime.timedelta(minutes=30)
+    ultima_busca[f] = agora() - datetime.timedelta(minutes=5)
     
 ultima_busca_infra = {}
 for f in base_infra.colunas():
@@ -1624,7 +1624,7 @@ def informar_atualizacao_patrimonial(doc, usuarios):
 #Thread(target=thread_teste).start()
 Thread(target=verificacao_periodica, daemon=False).start()
 Thread(target=verificacao_periodica_infra, daemon=True).start()
-Thread(target=thread_fechamento, daemon=True).start()
+#(target=thread_fechamento, daemon=True).start()
 #Thread(target=informar_fechamento2, daemon=True).start()
 bot.set_my_commands([telebot.types.BotCommand(comando[0], comando[1]) for comando in comandos])
 
