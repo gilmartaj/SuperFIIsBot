@@ -203,8 +203,8 @@ def informar_proventos(doc, usuarios):
                 mensagem += f'\n\n\U0001F3E0Código: {dados["DadosEconomicoFinanceiros"]["InformeRendimentos"]["Provento"]["CodNegociacao"]}'
                 print(float(dados["DadosEconomicoFinanceiros"]["InformeRendimentos"]["Provento"]["Amortizacao"]["ValorProvento"]))
                 mensagem += f'\n\U0001F4B0Amortização: R$ {conv_monet(dados["DadosEconomicoFinanceiros"]["InformeRendimentos"]["Provento"]["Amortizacao"]["ValorProvento"])}'
-                mensagem += f'\n\U0001F5D3Data base: {conv_data(dados["DadosEconomicoFinanceiros"]["InformeRendimentos"]["Provento"]["Rendimento"]["DataBase"])}'
-                mensagem += f'\n\U0001F4B8Data de pagamento: {conv_data(dados["DadosEconomicoFinanceiros"]["InformeRendimentos"]["Provento"]["Rendimento"]["DataPagamento"])}'
+                mensagem += f'\n\U0001F5D3Data base: {conv_data(dados["DadosEconomicoFinanceiros"]["InformeRendimentos"]["Provento"]["Amortizacao"]["DataBase"])}'
+                mensagem += f'\n\U0001F4B8Data de pagamento: {conv_data(dados["DadosEconomicoFinanceiros"]["InformeRendimentos"]["Provento"]["Amortizacao"]["DataPagamento"])}'
         else:
             print(d["CodNegociacao"])
             
@@ -228,6 +228,7 @@ def informar_proventos(doc, usuarios):
         
         
     mensagem += "\n\n@RepositorioDeFIIs"
+    print(mensagem)
     for u in usuarios:
         try:
             bot.send_message(u, mensagem)
@@ -254,6 +255,29 @@ def buscar_ultimo_provento_infra(fundo):
         else:
             prov = {"codigo": fundo, "valor": d["rate"].replace(",","."), "competencia": d["relatedTo"].lower(), "dataBase": d["lastDatePrior"], "dataPagamento": d["paymentDate"]}
     return prov
+    
+def buscar_ultimo_provento_infra(fundo):
+    r = requests.get("https://sistemaswebb3-listados.b3.com.br/fundsProxy/fundsCall/GetListedSupplementFunds/"+tokens_infra[fundo])
+    
+    prov = {}
+    results = r.json()["cashDividends"]
+    for d in results:
+        #print(d)
+        isin = d["isinCode"].strip()
+        if isin in prov:
+            if prov[isin]["dataBase"] == d["lastDatePrior"] and prov["dataPagamento"][isin] == d["paymentDate"]:
+                prov[isin]["valor"] = str(float(prov[isin]["valor"]) + float(d["rate"].replace(",",".")))
+                if len(prov[isin]["valor"].split(".")[-1]) > 11:
+                    prov[isin]["valor"] = f'{float(prov["valor"]):.11f}'
+            else:
+                break
+        else:
+            if len(prov.keys()) > 0 and (prov[list(prov.keys())[0]]["dataBase"] != d["lastDatePrior"] or prov[list(prov.keys())[0]]["dataPagamento"] != d["paymentDate"]):
+                break
+            prov[isin] = {"codigo": fundo, "valor": d["rate"].replace(",","."), "competencia": d["relatedTo"].lower(), "dataBase": d["lastDatePrior"], "dataPagamento": d["paymentDate"]}
+    for isin in prov.keys():
+        prov[isin]["codigo"] = get_nome_pelo_isin(prov[isin]["codigo"], isin)
+    return list(map(lambda x: x[1], list(sorted(prov.items(), key=lambda x:x[0]))))
         
 def informar_provento_infra1(info, seguidores):
     mensagem = "Informação de distribuição:"
@@ -274,26 +298,29 @@ def informar_provento_infra1(info, seguidores):
                 bot.send_message(u, mensagem)
             except:
                 pass   
-                
-def informar_provento_infra(fundo, valor, data_base, data_pagamento):
-    mensagem = "Informação de proventos:"
-    mensagem += f'\n\n\U0001F3D7Código: {fundo}'
-    mensagem += f'\n\U0001F4B0Valor: R$ {conv_monet(valor)}'
-    mensagem += f'\n\U0001F5D3Data base: {data_base}'
-    mensagem += f'\n\U0001F4B8Data de pagamento: {data_pagamento}'
+
+def informar_provento_infra1(infos, seguidores):
+    mensagem = "Informação de distribuição:"
+    mensagem += f'\n\U0001F4CBRef.: {infos[0]["competencia"]}'
+    
+    for info in infos:
+        mensagem += f'\n\n\U0001F3D7Código: {info["codigo"]}'
+        mensagem += f'\n\U0001F4B0Valor: R$ {conv_monet(info["valor"])}'
+        mensagem += f'\n\U0001F5D3Data base: {info["dataBase"]}'
+        mensagem += f'\n\U0001F4B8Data de pagamento: {info["dataPagamento"]}'
     
     mensagem += "\n\n@SuperFIIsBot\n@RepositorioDeFIIs"
     
-    usuarios = base_infra.buscar_seguidores(fundo)
     #usuarios = ["556068392","-743953207","556068392"]
-    for u in usuarios:
+    for u in seguidores:
         try:
             bot.send_message(u, mensagem)
         except:
             try:
                 bot.send_message(u, mensagem)
             except:
-                pass
+                pass         
+
 
 def informar_fechamento2():
     dic = {}
@@ -819,7 +846,8 @@ def handle_command(message):
     if len(message.text.strip().split()) == 2:
         ticker = message.text.split()[1].strip().upper()
         if not ticker in base.colunas():
-            if ticker in tokens_infra.keys():#("BODB11", "BDIF11", "CPTI11", "BIDB11", "IFRA11", "KDIF11", "OGIN11", "RBIF11", "CDII11", "JURO11", "SNID11", "XPID11"):
+            #if ticker in ("BODB11", "BDIF11", "CPTI11", "BIDB11", "IFRA11", "KDIF11", "OGIN11", "RBIF11", "CDII11", "JURO11", "SNID11", "XPID11"):
+            if ticker in tokens_infra.keys():
                 #bot.send_message(message.chat.id, f"Desculpe, mas no momento esta função não está disponível para FI-Infras.", reply_to_message_id=message.id)
                 enviada = bot.send_message(message.chat.id, f"Buscando...")
                 prov = buscar_ultimo_provento_infra(ticker)
@@ -829,6 +857,8 @@ def handle_command(message):
                     bot.send_message(message.chat.id, "Ocorreu um erro, tente novamente mais tarde.", reply_to_message_id=message.id)
                 bot.delete_message(message.chat.id, enviada.id)
                 return
+            #else:
+                #bot.send_message(message.chat.id, f"Por enquanto esta função não está disponível para FIPs.", reply_to_message_id=message.id)
             bot.send_message(message.chat.id, f"Não encontramos em nossa base de dados o fundo {ticker}.", reply_to_message_id=message.id)
             return
         #enviada = bot.send_message(message.chat.id, f"Buscando...")
@@ -849,32 +879,37 @@ def handle_command(message):
     #cmd = message.text.split()[0]
     #print(message)
     print(agora(), message.from_user.first_name, message.text)
-    if len(message.text.strip().split()) == 2:
-        ticker = message.text.split()[1].strip().upper()
-        if not ticker in base.colunas():
-            if ticker in tokens_infra.keys():
-                if ticker in ("BODB11", "BDIF11", "CPTI11", "BIDB11", "IFRA11", "KDIF11", "OGIN11", "RBIF11", "CDII11", "JURO11", "SNID11", "XPID11"):
-                    enviada = bot.send_message(message.chat.id, f"Buscando...")
-                    informar_atualizacao_patrimonial_infra(ticker, [message.from_user.id])
-                    bot.delete_message(message.chat.id, enviada.id)
-                else:
-                    bot.send_message(message.chat.id, f"Desculpe, mas no momento esta função ainda não está disponível para FIPs.", reply_to_message_id=message.id)
+    try:
+        if len(message.text.strip().split()) == 2:
+            ticker = message.text.split()[1].strip().upper()
+            if not ticker in base.colunas():
+                if ticker in tokens_infra.keys():
+                    if ticker in ("BODB11", "BDIF11", "CPTI11", "BIDB11", "IFRA11", "KDIF11", "OGIN11", "RBIF11", "CDII11", "JURO11", "SNID11", "XPID11"):
+                        enviada = bot.send_message(message.chat.id, f"Buscando...")
+                        informar_atualizacao_patrimonial_infra(ticker, [message.from_user.id])
+                        bot.delete_message(message.chat.id, enviada.id)
+                    else:
+                        enviada = bot.send_message(message.chat.id, f"Buscando...")
+                        informar_atualizacao_patrimonial_fip(ticker, [message.from_user.id])
+                        bot.delete_message(message.chat.id, enviada.id)
+                    return
+                bot.send_message(message.chat.id, f"Não encontramos em nossa base de dados o fundo {ticker}.", reply_to_message_id=message.id)
                 return
-            bot.send_message(message.chat.id, f"Não encontramos em nossa base de dados o fundo {ticker}.", reply_to_message_id=message.id)
-            return
-        enviada = bot.send_message(message.chat.id, f"Buscando...")
-        doc_pat = buscar_ultimo_informe_mensal_estruturado(buscar_cnpj(ticker))
-        if doc_pat:
-            doc_pat["codigoFII"] = ticker
-            informar_atualizacao_patrimonial(doc_pat, [message.from_user.id])
+            enviada = bot.send_message(message.chat.id, f"Buscando...")
+            doc_pat = buscar_ultimo_informe_mensal_estruturado(buscar_cnpj(ticker))
+            if doc_pat:
+                doc_pat["codigoFII"] = ticker
+                informar_atualizacao_patrimonial(doc_pat, [message.from_user.id])
+            else:
+                bot.send_message(message.chat.id, f'Não encontramos informações sobre a atualização patrimonial deste fundo.', reply_to_message_id=message.id)    
+            bot.delete_message(message.chat.id, enviada.id)
+        elif len(message.text.strip().split()) == 1:
+            bot.send_message(message.chat.id, f'Informe o código de negociação do fundo que você deseja ver informações sobre a atualização patrimonial.\nEx.: "/pat URPR11".', reply_to_message_id=message.id)
         else:
-            bot.send_message(message.chat.id, f'Não encontramos informações sobre a atualização patrimonial deste fundo.', reply_to_message_id=message.id)    
-        bot.delete_message(message.chat.id, enviada.id)
-    elif len(message.text.strip().split()) == 1:
-        bot.send_message(message.chat.id, f'Informe o código de negociação do fundo que você deseja ver informações sobre a atualização patrimonial.\nEx.: "/pat URPR11".', reply_to_message_id=message.id)
-    else:
-        bot.send_message(message.chat.id, f'Uso incorreto. Para ver informações sobre a atualização patrimoniall de um fundo, envie /pat CODIGO_FUNDO.\nEx.: "/pat URPR11".', reply_to_message_id=message.id)
-
+            bot.send_message(message.chat.id, f'Uso incorreto. Para ver informações sobre a atualização patrimoniall de um fundo, envie /pat CODIGO_FUNDO.\nEx.: "/pat URPR11".', reply_to_message_id=message.id)
+    except:
+        bot.send_message(message.chat.id, "Desculpe-nos, mas correu um erro. Tente novamente mais tarde.", reply_to_message_id=message.id)
+    
 @bot.message_handler(commands=["relat"])
 def handle_command(message):
     #cmd = message.text.split()[0]
@@ -1264,14 +1299,14 @@ def get_ticker_value(ticker):
         html_page = res.text       
         soup = BeautifulSoup(html_page, 'html.parser')
         print(soup.select_one(f'[data-field="regularMarketPrice"][data-symbol="{ticker}.SA"]').text.strip().replace(",",".").replace("(","").replace(")",""))
-        valor = float(soup.select_one(f'[data-field="regularMarketPrice"][data-symbol="{ticker}.SA"]').text.strip().replace(",",".").replace("(","").replace(")",""))
+        valor = float(",".join(soup.select_one(f'[data-field="regularMarketPrice"][data-symbol="{ticker}.SA"]').text.strip().replace("(","").replace(")","").rsplit(",",1)).replace(",",""))
     except:
         traceback.print_exc()
         time.sleep(2)
         res = requests.get(url, headers=headers)
         html_page = res.text       
         soup = BeautifulSoup(html_page, 'html.parser')
-        valor = float(soup.select_one(f'[data-field="regularMarketPrice"][data-symbol="{ticker}.SA"]').text.strip().replace(",",".").replace("(","").replace(")",""))
+        valor = float(",".join(soup.select_one(f'[data-field="regularMarketPrice"][data-symbol="{ticker}.SA"]').text.strip().replace("(","").replace(")","").rsplit(",",1)).replace(",",""))
     
     return valor
     
@@ -1512,6 +1547,7 @@ def verificacao_periodica():
     while True:
         try:
             print("init")
+            bot.send_message("-743953207", str(agora()))
             Thread(target=verificar, daemon=True).start()
             h = agora()
             if is_dia_util(h.date()) and h.hour > 7 and h.hour < 22:
@@ -1620,13 +1656,13 @@ def verificar_infra():
                     ultima_busca_infra[f] = datetime.datetime(year=int(de[0:4]), month=int(de[5:7]), day=int(de[8:10]), hour=int(de[11:13]), minute=int(de[14:16]), tzinfo=tz_info)
                 except:
                     ultima_busca_infra[f] = h
-            try:
+            """try:
                 prov = buscar_ultimo_provento_infra(f)
                 if prov != ultimo_provento_infra[f]:
                     informar_provento_infra1(prov, seguidores)
                     ultimo_provento_infra[f] = prov
             except:
-                pass
+                pass"""
             time.sleep(2)
                     
 
@@ -1638,7 +1674,7 @@ def verificacao_periodica_infra():
             Thread(target=verificar_infra, daemon=True).start()
             h = agora()
             if is_dia_util(h.date()) and h.hour > 6 and h.hour < 23:
-                time.sleep(1800)
+                time.sleep(1200)
             else:
                 time.sleep(10800)
             print("Verificando infra...", agora())
@@ -1677,7 +1713,7 @@ tokens_infra = {
     "VIGT11": "eyJpZGVudGlmaWVyRnVuZCI6IlZJR1QiLCJ0eXBlIjoxLCJwYWdlTnVtYmVyIjoxLCJwYWdlU2l6ZSI6MjB9",
     "XPIE11": "eyJpZGVudGlmaWVyRnVuZCI6IlhQSUUiLCJ0eXBlIjoxLCJwYWdlTnVtYmVyIjoxLCJwYWdlU2l6ZSI6MjB9",
 }
-
+"""
 ultimo_provento_infra = {}
 for f in base_infra.colunas():
     try:
@@ -1689,7 +1725,7 @@ for f in base_infra.colunas():
             ultimo_provento_infra[f] = buscar_ultimo_provento_infra(f)
         except:
             pass
-    time.sleep(2)
+    time.sleep(2)"""
        
 print("Robô iniciado.")
 #print(fiis_cnpj)
@@ -1853,6 +1889,132 @@ def informar_atualizacao_patrimonial_infra(fundo, usuarios):
     mensagem += "\n\n@RepositorioDeFIIs"
     for u in usuarios:
         bot.send_message(u, mensagem)
+        
+def buscar_info_patrimonio_fip(cnpj):
+
+    data = {"filtro":
+     {
+      "numeroRegistro": cnpj,
+       "tipoRegistro":{"id":56}
+     }
+    }
+    
+    print("...")
+    try:
+        id_consulta = requests.post("https://web.cvm.gov.br/app/fundosweb/consultarFundo/getRegistrosPorFiltro", json=data, timeout=1.5).json()[0]["id"]
+    except:
+        try:
+            id_consulta = requests.post("https://web.cvm.gov.br/app/fundosweb/consultarFundo/getRegistrosPorFiltro", json=data, timeout=3).json()[0]["id"]
+        except:
+            id_consulta = requests.post("https://web.cvm.gov.br/app/fundosweb/consultarFundo/getRegistrosPorFiltro", json=data, timeout=6).json()[0]["id"]
+    print(id_consulta)
+
+    try:
+        id_registro = requests.get(f"http://web.cvm.gov.br/app/fundosweb/registrarFundo/getRegistroFundoPorIdParaConsulta/{id_consulta}", timeout=1.5).json()["registro"]["id"]
+    except:
+        try:
+            id_registro = requests.get(f"http://web.cvm.gov.br/app/fundosweb/registrarFundo/getRegistroFundoPorIdParaConsulta/{id_consulta}", timeout=3).json()["registro"]["id"]
+        except:
+            id_registro = requests.get(f"http://web.cvm.gov.br/app/fundosweb/registrarFundo/getRegistroFundoPorIdParaConsulta/{id_consulta}", timeout=6).json()["registro"]["id"]
+    print(id_registro)
+
+    try:
+        info_pat = requests.get(f"https://web.cvm.gov.br/app/fundosweb/patrimonioLiquido/getPatrimoniosLiquidos/{id_registro}", timeout=1.5).json()
+    except:
+        try:
+            info_pat = requests.get(f"https://web.cvm.gov.br/app/fundosweb/patrimonioLiquido/getPatrimoniosLiquidos/{id_registro}", timeout=3).json()
+        except:
+            info_pat = requests.get(f"https://web.cvm.gov.br/app/fundosweb/patrimonioLiquido/getPatrimoniosLiquidos/{id_registro}", timeout=6).json()
+    return info_pat
+    
+def informar_atualizacao_patrimonial_fip(fundo, usuarios):
+#422748
+    
+    v_atual = 0
+
+    try:
+        v_atual = get_ticker_value(fundo)
+    except:
+        pass
+
+    info_b3 = buscar_info_b3_infra(fundo)
+    info_pat = buscar_info_patrimonio_fip(info_b3["cnpj"])
+
+    mensagem = "Informação patrimonial:"
+    #mensagem += f'FII: {doc["codigoFII"]}'
+    mensagem += f'\n\n\U0001F3E0Código: {fundo}'
+    
+    competencia = str(int(info_pat[0]["dataPatrimonioLiquido"][5:7])//3)+"T/"+info_pat[0]["dataPatrimonioLiquido"][:4]
+    #if re.match(r"^\d{4}/\d{2}/\d{2}$",competencia):
+        #competencia = format_dt_ambima(competencia)
+        
+    mensagem += f"\n\U0001F5D3Competência.: {competencia}\n"
+    
+    #print(d)
+    pl = info_pat[0]["valorPatrimonioLiquido"]
+    if(len(info_pat) > 1):
+        valz = round(pl / info_pat[1]["valorPatrimonioLiquido"]*100-100,4)
+    qt_cotas = int(info_b3["quotaCount"])
+    vp = pl/qt_cotas
+    pvp = round(v_atual/vp,2)
+    
+    mensagem += f'\n\U0001F4CAPat. líquido: {convv(pl)}'
+    
+    if(len(info_pat) > 1):
+        if valz > 0:
+            valz = f"+{valz}%".replace(".",",")
+            mensagem += f'\n\U0001F4C8Variação: {valz}'
+        elif valz < 0:
+            valz = f"{valz}%".replace(".",",")
+            mensagem += f'\n\U0001F4C9Variação: {valz}'
+        else:
+            valz = f"0,00%"
+            mensagem += f'\n\U0001F4C9Variação: {valz}'
+        
+    vp = f'R$ {round(vp*100//1/100,2):.2f}'.replace(".",",")
+    
+    pvp = f"{pvp:.2f}".replace(".",",")
+    
+    mensagem += f'\n\U0001F4B5VP/cota: {vp}'
+    if v_atual:
+        mensagem += f'\n\u2797P/VP atual: {pvp}'
+    #mensagem += f'\n\u26A0Alavancagem: {alavancagem:.2%}'.replace(".",",")
+        
+    #print(mensagem)
+    
+    #print(convv(pl))
+    #print(valz)
+    #print(vp)
+    #print(pvp)
+        
+    mensagem += "\n\n@RepositorioDeFIIs"
+    for u in usuarios:
+        bot.send_message(u, mensagem)
+
+def capitalizar(texto):
+    return " ".join(map(lambda p: p.capitalize(), texto.split())).strip()
+
+def get_nome_pelo_isin(fundo, cod_isin):
+    fundos = pd.read_csv("isins_tokens.csv").dropna()
+    token = fundos.where(fundos["Código"] == fundo).dropna()["Token"].values[0]
+    r = requests.get(f"https://sistemaswebb3-listados.b3.com.br/isinProxy/IsinCall/GetEmitterCode/{token}")
+    print(cod_isin, r.json()["results"])
+    for isin in r.json()["results"]:
+        if isin["isin"] != cod_isin:
+            continue
+        #if isin["codigoEmissor"].split().upper() != fundo[:4]:
+            #raise Exception()
+        if isin["descricaoPt"].strip().upper() in ("COTAS","COTAS - COTAS"):
+            return fundo
+        regex = re.compile(isin["codigoEmissor"]+r"\d\d")
+        busca = regex.search(isin["descricaoPt"])
+        #print(isin)
+        if busca:
+            return busca.group() 
+        else:
+            #return (fundo + " (" + isin["descricaoPt"].strip() + ")").replace("COTAS - COTAS", "COTAS -")
+            return fundo + " (" + capitalizar(isin["descricaoPt"].strip().replace("COTAS - COTAS", "COTAS")) + ")"
+    return cod_isin
 
 #Thread(target=thread_teste).start()
 Thread(target=verificacao_periodica, daemon=False).start()
@@ -1871,7 +2033,14 @@ bot.infinity_polling(timeout=200, long_polling_timeout = 5)
 #https://web.cvm.gov.br/app/fundosweb/registrarFundo/getRegistroFundoPorIdParaConsulta/5903
 #https://web.cvm.gov.br/app/fundosweb/patrimonioLiquido/getPatrimoniosLiquidos/17189
 
-#informar_atualizacao_patrimonial_infra("BDIV11", ["556068392"])
+#informar_atualizacao_patrimonial_fip("AATH11", ["556068392"])
+#informar_provento_infra1(buscar_ultimo_provento_infra("CDII11"), ["556068392"])
+
+"""ticker = "JRDM11"
+doc_rend = buscar_ultimo_documento_provento(buscar_cnpj(ticker))
+doc_rend["codigoFII"] = ticker
+informar_proventos(doc_rend, ["556068392"])"""
+
 """
 h = {
 "Host": "web.cvm.gov.br",
@@ -1899,11 +2068,17 @@ data = {"filtro":
  }
 }
 print("...")
-id_reg = 5903#requests.post("https://web.cvm.gov.br/app/fundosweb/consultarFundo/getRegistrosPorFiltro", json=data, headers=h).json()[0]["id"]
-print(id_reg)
+id_consulta = requests.post("https://web.cvm.gov.br/app/fundosweb/consultarFundo/getRegistrosPorFiltro", json=data, timeout=1).json()[0]["id"]
+print(id_consulta)
 
-r = requests.get(f"https://web.cvm.gov.br/app/fundosweb/registrarFundo/getRegistroFundoPorIdParaConsulta/{id_reg}")
-print(r.json())"""
+id_registro = requests.get(f"http://web.cvm.gov.br/app/fundosweb/registrarFundo/getRegistroFundoPorIdParaConsulta/{id_consulta}", timeout=1).json()["registro"]["id"]
+print(id_registro)
+
+info_pat = requests.get(f"https://web.cvm.gov.br/app/fundosweb/patrimonioLiquido/getPatrimoniosLiquidos/{id_registro}", timeout=1).json()[0]
+
+print(f'{info_pat["valorPatrimonioLiquido"]/buscar_info_b3_infra(fundo)["quotaCount"]:.2f}')
+"""
+#print(r.json())
 """doc = buscar_ultimo_documento_provento(42888292000190)
 doc["codigoFII"] = "JGPX11"
 informar_proventos(doc,["556068392"])
