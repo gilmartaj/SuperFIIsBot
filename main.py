@@ -46,7 +46,7 @@ gspread_credentials = {
   "client_x509_cert_url": os.getenv("gspread_client_x509_cert_url")
 }
 
-#print(gspread_credentials)
+print(gspread_credentials)
 
 #client = gspread.service_account(filename='superfiisbot-9f67df851d9a.json')
 client = gspread.service_account_from_dict(gspread_credentials)
