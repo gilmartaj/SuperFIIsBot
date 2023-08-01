@@ -9,6 +9,6 @@ RUN pip3 install -r requirements.txt
 
 COPY . .
 
-EXPOSE 3306
+EXPOSE 80
 
 CMD ["python3", "main.py"]
