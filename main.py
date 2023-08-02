@@ -34,7 +34,7 @@ import concurrent.futures
 from multiprocessing.pool import ThreadPool
 
 import queue
-
+"""
 gspread_credentials = {
   "type": "service_account",
   "project_id": os.getenv("gspread_project_id"),
@@ -46,7 +46,7 @@ gspread_credentials = {
   "token_uri": "https://oauth2.googleapis.com/token",
   "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
   "client_x509_cert_url": os.getenv("gspread_client_x509_cert_url")
-}
+}"""
 
 #print(gspread_credentials)
 
