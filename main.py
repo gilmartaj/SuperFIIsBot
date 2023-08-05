@@ -33,6 +33,8 @@ import concurrent.futures
 
 from multiprocessing.pool import ThreadPool
 
+import queue
+
 gspread_credentials = {
   "type": "service_account",
   "project_id": os.getenv("gspread_project_id"),
@@ -64,7 +66,7 @@ TELETHON_API_HASH = os.getenv("telethon_api_hash")
 
 bot = telebot.TeleBot(bot_super)
 
-
+fila_doc = queue.Queue()
 
 comandos = [
     ("start", "Iniciar"),
@@ -94,7 +96,9 @@ mais_comandos = [
 fiis_cnpj = pd.read_csv("fiis_cnpj.csv", dtype={"Código":str, "CNPJ":str}).dropna()
 fiagros_cnpj = pd.read_csv("fiagros_cnpj.csv", dtype={"Código":str, "CNPJ":str}).dropna()
 fidcs_cnpj = pd.read_csv("fidcs_cnpj.csv", dtype={"Código":str, "CNPJ":str}).dropna()
-fiis_cnpj = pd.concat([fiis_cnpj, fiagros_cnpj, fidcs_cnpj])
+etfs_rf_cnpj = pd.read_csv("etfs-renda-fixa_cnpj.csv", dtype={"Código":str, "CNPJ":str}).dropna()
+etfs_rv_cnpj = pd.read_csv("etfs-renda-variavel_cnpj.csv", dtype={"Código":str, "CNPJ":str}).dropna()
+fiis_cnpj = pd.concat([fiis_cnpj, fiagros_cnpj, fidcs_cnpj,etfs_rf_cnpj,etfs_rv_cnpj])
 
 
 
@@ -152,7 +156,8 @@ class BaseCache:
         return sorted(seguidos)
         
     def buscar_seguidores(self, fii):
-            return list(filter(lambda s: s != "", self.planilha[fii]))
+        return list(filter(lambda s: s != "", self.planilha[fii]))
+        #return ["556068392","-743953207"]
             
     def colunas(self):
         return sorted(self.planilha.keys())
@@ -167,6 +172,23 @@ class BaseCache:
  
 base = BaseCache(sheet)
 base_infra = BaseCache(sheet_infra)
+
+import multiprocessing
+lock = multiprocessing.Lock()
+def log(mensagem):
+    try:
+        lock.acquire(timeout=2)
+    except:
+        return
+    try:
+        with open("log.txt", "a") as log:
+            log.write(f"[{agora()}] {mensagem}\n")
+    except:
+        pass
+    try:
+        lock.release()
+    except:
+        pass
 
 def informar_proventos(doc, usuarios):
 #422748
@@ -234,6 +256,31 @@ def informar_proventos(doc, usuarios):
             bot.send_message(u, mensagem)
         except:
             pass
+
+def capitalizar(texto):
+    return " ".join(map(lambda p: p.capitalize(), texto.split())).strip()
+
+def get_nome_pelo_isin(fundo, cod_isin):
+    fundos = pd.read_csv("isins_tokens.csv").dropna()
+    token = fundos.where(fundos["Código"] == fundo).dropna()["Token"].values[0]
+    r = requests.get(f"https://sistemaswebb3-listados.b3.com.br/isinProxy/IsinCall/GetEmitterCode/{token}")
+    print(cod_isin, r.json()["results"])
+    for isin in r.json()["results"]:
+        if isin["isin"] != cod_isin:
+            continue
+        #if isin["codigoEmissor"].split().upper() != fundo[:4]:
+            #raise Exception()
+        if isin["descricaoPt"].strip().upper() in ("COTAS","COTAS - COTAS"):
+            return fundo
+        regex = re.compile(isin["codigoEmissor"]+r"\d\d")
+        busca = regex.search(isin["descricaoPt"])
+        #print(isin)
+        if busca:
+            return busca.group() 
+        else:
+            #return (fundo + " (" + isin["descricaoPt"].strip() + ")").replace("COTAS - COTAS", "COTAS -")
+            return fundo + " (" + capitalizar(isin["descricaoPt"].strip().replace("COTAS - COTAS", "COTAS")) + ")"
+    return cod_isin
             
 def buscar_ultimo_provento_infra(fundo):
     r = requests.get("https://sistemaswebb3-listados.b3.com.br/fundsProxy/fundsCall/GetListedSupplementFunds/"+tokens_infra[fundo])
@@ -262,10 +309,11 @@ def buscar_ultimo_provento_infra(fundo):
     prov = {}
     results = r.json()["cashDividends"]
     for d in results:
+        print(prov)
         #print(d)
         isin = d["isinCode"].strip()
         if isin in prov:
-            if prov[isin]["dataBase"] == d["lastDatePrior"] and prov["dataPagamento"][isin] == d["paymentDate"]:
+            if prov[isin]["dataBase"] == d["lastDatePrior"] and prov[isin]["dataPagamento"] == d["paymentDate"]:
                 prov[isin]["valor"] = str(float(prov[isin]["valor"]) + float(d["rate"].replace(",",".")))
                 if len(prov[isin]["valor"].split(".")[-1]) > 11:
                     prov[isin]["valor"] = f'{float(prov["valor"]):.11f}'
@@ -842,6 +890,7 @@ def handle_command(message):
 def handle_command(message):
     #cmd = message.text.split()[0]
     #print(message)
+    log(f"{message.from_user.first_name} ({message.from_user.id}) {message.text}")
     print(agora(), message.from_user.first_name, message.text)
     if len(message.text.strip().split()) == 2:
         ticker = message.text.split()[1].strip().upper()
@@ -878,6 +927,7 @@ def handle_command(message):
 def handle_command(message):
     #cmd = message.text.split()[0]
     #print(message)
+    log(f"{message.from_user.first_name} ({message.from_user.id}) {message.text}")
     print(agora(), message.from_user.first_name, message.text)
     try:
         if len(message.text.strip().split()) == 2:
@@ -908,12 +958,14 @@ def handle_command(message):
         else:
             bot.send_message(message.chat.id, f'Uso incorreto. Para ver informações sobre a atualização patrimoniall de um fundo, envie /pat CODIGO_FUNDO.\nEx.: "/pat URPR11".', reply_to_message_id=message.id)
     except:
+        traceback.print_exc()
         bot.send_message(message.chat.id, "Desculpe-nos, mas correu um erro. Tente novamente mais tarde.", reply_to_message_id=message.id)
     
 @bot.message_handler(commands=["relat"])
 def handle_command(message):
     #cmd = message.text.split()[0]
     #print(message)
+    log(f"{message.from_user.first_name} ({message.from_user.id}) {message.text}")
     print(agora(), message.from_user.first_name, message.text)
     if len(message.text.strip().split()) == 2:
         ticker = message.text.split()[1].strip().upper()
@@ -947,6 +999,7 @@ def handle_command(message):
 def handle_command(message):
     #cmd = message.text.split()[0]
     #print(message)
+    log(f"{message.from_user.first_name} ({message.from_user.id}) {message.text}")
     print(agora(), message.from_user.first_name, message.text)
     if len(message.text.strip().split()) == 2:
         ticker = message.text.split()[1].strip().upper()
@@ -973,6 +1026,7 @@ def handle_command(message):
 def handle_command(message):
     #cmd = message.text.split()[0]
     #print(message)
+    log(f"{message.from_user.first_name} ({message.from_user.id}) {message.text}")
     print(agora(), message.from_user.first_name, message.text)
     if len(message.text.strip().split()) == 2:
         ticker = message.text.split()[1].strip().upper()
@@ -999,6 +1053,7 @@ def handle_command(message):
 def handle_command(message):
     #cmd = message.text.split()[0]
     #print(message)
+    log(f"{message.from_user.first_name} ({message.from_user.id}) {message.text}")
     print(agora(), message.from_user.first_name, message.text)
     if len(message.text.strip().split()) == 2:
         ticker = message.text.split()[1].strip().upper()
@@ -1025,6 +1080,7 @@ def handle_command(message):
 def handle_command(message):
     #cmd = message.text.split()[0]
     #print(message)
+    log(f"{message.from_user.first_name} ({message.from_user.id}) {message.text}")
     print(agora(), message.from_user.first_name, message.text)
     if len(message.text.strip().split()) == 2:
         ticker = message.text.split()[1].strip().upper()
@@ -1047,6 +1103,7 @@ def handle_command(message):
 def handle_command(message):
     cmd = message.text.split()[0]
     #print(message)
+    log(f"{message.from_user.first_name} ({message.from_user.id}) {message.text}")
     print(agora(), message.from_user.first_name, message.text)
     if len(message.text.strip().split()) == 2:
         ticker = message.text.split()[1].strip().upper()
@@ -1088,6 +1145,7 @@ def handle_command(message):
 @bot.message_handler(commands=["seguir"])
 def handle_command(message):
     #print(message)
+    log(f"{message.from_user.first_name} ({message.from_user.id}) {message.text}")
     print(agora(), message.from_user.first_name, message.text)
     if len(message.text.strip().split()) == 2:
         ticker = message.text.split()[1].strip().upper()
@@ -1112,6 +1170,7 @@ def handle_command(message):
 @bot.message_handler(commands=["desinscrever"])
 def handle_command(message):
     #print(message)
+    log(f"{message.from_user.first_name} ({message.from_user.id}) {message.text}")
     print(agora(), message.from_user.first_name, message.text)
     if len(message.text.split()) != 2:
         bot.send_message(message.chat.id, 'Uso incorreto. Para deixar de seguir um fundo envie /desinscrever CODIGO_FUNDO. Ex.: "/desinscrever URPR11"', reply_to_message_id=message.id)
@@ -1134,6 +1193,7 @@ def handle_command(message):
 @bot.message_handler(commands=["fundos_seguidos"])
 def handle_command(message):
     #print(message)
+    log(f"{message.from_user.first_name} ({message.from_user.id}) {message.text}")
     print(message.from_user.first_name, message.text)
     fs = base.buscar_seguidos(str(message.from_user.id))
     fs.extend(base_infra.buscar_seguidos(str(message.from_user.id)))
@@ -1362,6 +1422,7 @@ def handle_command(message):
         
 @bot.message_handler(commands=["cnpj"])
 def handle_command(message):
+    log(f"{message.from_user.first_name} ({message.from_user.id}) {message.text}")
     print(agora(), message.from_user.first_name, message.text)
     if len(message.text.strip().split()) == 2:
         try:
@@ -1386,6 +1447,7 @@ def mensagem_instrucoes(comandos=comandos):
 def handle_command(message):
     #print(message)
     #bot.forward_message("-743953207", message.chat.id, message.id)
+    log(f"{message.from_user.first_name} ({message.from_user.id}) {message.text}")
     bot.send_message("-743953207", f"{message.from_user.first_name} ({message.from_user.id}) {message.text}")
     print(agora(), message.from_user.first_name, message.from_user.id, message.text)
     bot.send_message(message.from_user.id, "Seja bem-vindo ao @SuperFIIsBot!!!\n\n")
@@ -1400,22 +1462,26 @@ def handle_command(message):
     print(agora(), message.from_user.first_name, message.from_user.id, message.text)
     bot.send_message(message.from_user.id, "Segue a lista de comandos extra que o bot disponibiliza:\n\n"+mensagem_instrucoes(mais_comandos))
     bot.send_message(message.from_user.id, "Em caso de dúvidas ou sugestões, entre em contato diretamente com o desenvolvedor @gilmartaj, ficaremos felizes em ajudar!")
+    log(f"{message.from_user.first_name} ({message.from_user.id}) {message.text}")
     
 @bot.message_handler(commands=["ajuda"])
 def handle_command(message):
     #print(message)
     print(agora(), message.from_user.first_name, message.text)
     bot.send_message(message.from_user.id, "Segue a lista de comandos disponíveis e suas respectivas descrições:\n\n"+mensagem_instrucoes()+"\nEm caso de dúvidas ou sugestões, entre em contato diretamente com o desenvolvedor @gilmartaj", reply_to_message_id=message.id)
+    log(f"{message.from_user.first_name} ({message.from_user.id}) {message.text}")
     
 @bot.message_handler(commands=["doacao"])
 def handle_command(message):
     print(agora(), message.from_user.first_name, message.from_user.id, message.text)
     bot.send_message(message.from_user.id, "Além do tempo de desenvolvimento, manter o bot rodando exige um servidor, e isso tem um custo. Se o bot é útil para você e não lhe fazem falta alguns centavos, ajude o projeto doando a partir de 1 centavo para a Chave Pix de e-mail do desenvolvedor: gil77891@gmail.com\n\nObs.: Não use este e-mail para contato, isto pode ser feito aqui mesmo pelo Telegram, enviando uma mensagem para @gilmartaj.")
+    log(f"{message.from_user.first_name} ({message.from_user.id}) {message.text}")
     
 @bot.message_handler(commands=["contato"])
 def handle_command(message):
     print(agora(), message.from_user.first_name, message.from_user.id, message.text)
     bot.send_message(message.from_user.id, "Para dúvidas, sugestões e reportes de erros, envie uma mensagem direta para o desenvolvedor @gilmartaj, aqui mesmo pelo Telegram.")
+    log(f"{message.from_user.first_name} ({message.from_user.id}) {message.text}")
     
 @bot.message_handler(commands=["infprv"])
 def handle_command(message):
@@ -1461,6 +1527,7 @@ def thread_envio(doc, seguidores):
         traceback.print_exc()
 
 def verificar():
+    global fila_doc
     print("Verificando...")
     for f in base.colunas():
         seguidores = base.buscar_seguidores(f)
@@ -1471,6 +1538,9 @@ def verificar():
             documentos = []
             try:
                 documentos = buscar_documentos(buscar_cnpj(f), h)
+                for doc in documentos:
+                    if doc not in fila_doc.queue:
+                        fila_doc.put(doc)
                 #print(len(documentos))
             except:
                 pass
@@ -1480,15 +1550,16 @@ def verificar():
                     #bot.send_message(seg, f + " - Nenhum documento")
             #with concurrent.futures.ThreadPoolExecutor(max_workers = 5) as executor:
             #with ThreadPool(processes = 5) as executor:
-            for doc in documentos:
-                print(f, "-", doc["tipoDocumento"])
-                doc["codigoFII"] = f
-                thread_envio(doc, seguidores)
+            while not fila_doc.empty():
                 try:
+                    doc = fila_doc.get(block=False)
+                    print(f, "-", doc["tipoDocumento"])
+                    doc["codigoFII"] = f
+                    thread_envio(doc, seguidores)                
                     de = doc["dataEntrega"]
                     ultima_busca[f] = datetime.datetime(year=int(de[6:10]), month=int(de[3:5]), day=int(de[0:2]), hour=int(de[11:13]), minute=int(de[14:16]), tzinfo=tz_info)
                 except:
-                    ultima_busca[f] = agora()
+                    pass#ultima_busca[f] = agora()
                     #Thread(target=thread_envio, args=(doc, seguidores), daemon=True).start()
                     #executor.submit(thread_envio, doc, seguidores)
                     #try:
@@ -1547,7 +1618,7 @@ def verificacao_periodica():
     while True:
         try:
             print("init")
-            bot.send_message("-743953207", str(agora()))
+            #bot.send_message("-743953207", str(agora()))
             Thread(target=verificar, daemon=True).start()
             h = agora()
             if is_dia_util(h.date()) and h.hour > 7 and h.hour < 22:
@@ -1656,25 +1727,29 @@ def verificar_infra():
                     ultima_busca_infra[f] = datetime.datetime(year=int(de[0:4]), month=int(de[5:7]), day=int(de[8:10]), hour=int(de[11:13]), minute=int(de[14:16]), tzinfo=tz_info)
                 except:
                     ultima_busca_infra[f] = h
-            """try:
+            try:
                 prov = buscar_ultimo_provento_infra(f)
+                #nova_data = datetime.datetime.strptime(list(prov.values())[0], "%d/%m/%Y") if prov != None else datetime.datetime.min
+                #ultima_data = datetime.datetime.strptime(list(ultimo_provento_infra[f].values())[0], "%d/%m/%Y") if ultimo_provento_infra[f] != None else datetime.datetime.min
+                #if prov != ultimo_provento_infra[f] and nova_data >= ultima_data:
                 if prov != ultimo_provento_infra[f]:
+                    print(log(f"Provento encontrado: {f}"))
                     informar_provento_infra1(prov, seguidores)
                     ultimo_provento_infra[f] = prov
             except:
-                pass"""
+                traceback.print_exc()
             time.sleep(2)
                     
 
 def verificacao_periodica_infra():
-    time.sleep(300)
+    time.sleep(600)
 
     while True:
         try:
             Thread(target=verificar_infra, daemon=True).start()
             h = agora()
             if is_dia_util(h.date()) and h.hour > 6 and h.hour < 23:
-                time.sleep(1200)
+                time.sleep(600)
             else:
                 time.sleep(10800)
             print("Verificando infra...", agora())
@@ -1713,8 +1788,8 @@ tokens_infra = {
     "VIGT11": "eyJpZGVudGlmaWVyRnVuZCI6IlZJR1QiLCJ0eXBlIjoxLCJwYWdlTnVtYmVyIjoxLCJwYWdlU2l6ZSI6MjB9",
     "XPIE11": "eyJpZGVudGlmaWVyRnVuZCI6IlhQSUUiLCJ0eXBlIjoxLCJwYWdlTnVtYmVyIjoxLCJwYWdlU2l6ZSI6MjB9",
 }
-"""
-ultimo_provento_infra = {}
+
+"""ultimo_provento_infra = {}
 for f in base_infra.colunas():
     try:
         print(f"Atualizando rendimento {f}...")
@@ -1724,7 +1799,7 @@ for f in base_infra.colunas():
             time.sleep(5)
             ultimo_provento_infra[f] = buscar_ultimo_provento_infra(f)
         except:
-            pass
+            traceback.print_exc()
     time.sleep(2)"""
        
 print("Robô iniciado.")
@@ -1819,7 +1894,9 @@ def buscar_info_b3_infra(fundo):
 
 def buscar_info_ambima_infra(fundo):
     url = f"https://data.anbima.com.br/fundos-bff/fundos?page=0&size=20&field=&order=&q={buscar_cnpj_infra(fundo)}"
+    print(url)
     r = requests.get(url)
+    print(r.json())
     return r.json()["content"][0]
 
 def buscar_patrimonio_liquido_infra(fundo):
@@ -1927,6 +2004,42 @@ def buscar_info_patrimonio_fip(cnpj):
             info_pat = requests.get(f"https://web.cvm.gov.br/app/fundosweb/patrimonioLiquido/getPatrimoniosLiquidos/{id_registro}", timeout=6).json()
     return info_pat
     
+def buscar_info_patrimonio_infra(cnpj):
+
+    data = {"filtro":
+     {
+      "numeroRegistro": cnpj
+     }
+    }
+    
+    print("...")
+    try:
+        id_consulta = requests.post("https://web.cvm.gov.br/app/fundosweb/consultarFundo/getRegistrosPorFiltro", json=data, timeout=1.5).json()[0]["id"]
+    except:
+        try:
+            id_consulta = requests.post("https://web.cvm.gov.br/app/fundosweb/consultarFundo/getRegistrosPorFiltro", json=data, timeout=3).json()[0]["id"]
+        except:
+            id_consulta = requests.post("https://web.cvm.gov.br/app/fundosweb/consultarFundo/getRegistrosPorFiltro", json=data, timeout=6).json()[0]["id"]
+    print(id_consulta)
+
+    try:
+        id_registro = requests.get(f"http://web.cvm.gov.br/app/fundosweb/registrarFundo/getRegistroFundoPorIdParaConsulta/{id_consulta}", timeout=1.5).json()["registro"]["id"]
+    except:
+        try:
+            id_registro = requests.get(f"http://web.cvm.gov.br/app/fundosweb/registrarFundo/getRegistroFundoPorIdParaConsulta/{id_consulta}", timeout=3).json()["registro"]["id"]
+        except:
+            id_registro = requests.get(f"http://web.cvm.gov.br/app/fundosweb/registrarFundo/getRegistroFundoPorIdParaConsulta/{id_consulta}", timeout=6).json()["registro"]["id"]
+    print(id_registro)
+
+    try:
+        info_pat = requests.get(f"https://web.cvm.gov.br/app/fundosweb/patrimonioLiquido/getPatrimoniosLiquidos/{id_registro}", timeout=1.5).json()
+    except:
+        try:
+            info_pat = requests.get(f"https://web.cvm.gov.br/app/fundosweb/patrimonioLiquido/getPatrimoniosLiquidos/{id_registro}", timeout=3).json()
+        except:
+            info_pat = requests.get(f"https://web.cvm.gov.br/app/fundosweb/patrimonioLiquido/getPatrimoniosLiquidos/{id_registro}", timeout=6).json()
+    return info_pat
+    
 def informar_atualizacao_patrimonial_fip(fundo, usuarios):
 #422748
     
@@ -1948,7 +2061,7 @@ def informar_atualizacao_patrimonial_fip(fundo, usuarios):
     #if re.match(r"^\d{4}/\d{2}/\d{2}$",competencia):
         #competencia = format_dt_ambima(competencia)
         
-    mensagem += f"\n\U0001F5D3Competência.: {competencia}\n"
+    mensagem += f"\n\U0001F5D3Competência: {competencia}\n"
     
     #print(d)
     pl = info_pat[0]["valorPatrimonioLiquido"]
@@ -1991,35 +2104,74 @@ def informar_atualizacao_patrimonial_fip(fundo, usuarios):
     for u in usuarios:
         bot.send_message(u, mensagem)
 
-def capitalizar(texto):
-    return " ".join(map(lambda p: p.capitalize(), texto.split())).strip()
+def informar_atualizacao_patrimonial_infra(fundo, usuarios):
+#422748
+    
+    v_atual = 0
 
-def get_nome_pelo_isin(fundo, cod_isin):
-    fundos = pd.read_csv("isins_tokens.csv").dropna()
-    token = fundos.where(fundos["Código"] == fundo).dropna()["Token"].values[0]
-    r = requests.get(f"https://sistemaswebb3-listados.b3.com.br/isinProxy/IsinCall/GetEmitterCode/{token}")
-    print(cod_isin, r.json()["results"])
-    for isin in r.json()["results"]:
-        if isin["isin"] != cod_isin:
-            continue
-        #if isin["codigoEmissor"].split().upper() != fundo[:4]:
-            #raise Exception()
-        if isin["descricaoPt"].strip().upper() in ("COTAS","COTAS - COTAS"):
-            return fundo
-        regex = re.compile(isin["codigoEmissor"]+r"\d\d")
-        busca = regex.search(isin["descricaoPt"])
-        #print(isin)
-        if busca:
-            return busca.group() 
+    try:
+        v_atual = get_ticker_value(fundo)
+    except:
+        pass
+
+    info_b3 = buscar_info_b3_infra(fundo)
+    info_pat = buscar_info_patrimonio_infra(info_b3["cnpj"])
+
+    mensagem = "Informação patrimonial:"
+    #mensagem += f'FII: {doc["codigoFII"]}'
+    mensagem += f'\n\n\U0001F3E0Código: {fundo}'
+    
+    competencia = info_pat[0]["dataPatrimonioLiquido"][8:10]+"/"+info_pat[0]["dataPatrimonioLiquido"][5:7]+"/"+info_pat[0]["dataPatrimonioLiquido"][:4]
+    #if re.match(r"^\d{4}/\d{2}/\d{2}$",competencia):
+        #competencia = format_dt_ambima(competencia)
+        
+    mensagem += f"\n\U0001F5D3Data ref.: {competencia}\n"
+    
+    #print(d)
+    pl = info_pat[0]["valorPatrimonioLiquido"]
+    if(len(info_pat) > 1):
+        valz = round(pl / info_pat[1]["valorPatrimonioLiquido"]*100-100,4)
+    qt_cotas = int(info_b3["quotaCount"])
+    vp = pl/qt_cotas
+    pvp = round(v_atual/vp,2)
+    
+    mensagem += f'\n\U0001F4CAPat. líquido: {convv(pl)}'
+    
+    """if(len(info_pat) > 1):
+        if valz > 0:
+            valz = f"+{valz}%".replace(".",",")
+            mensagem += f'\n\U0001F4C8Variação: {valz}'
+        elif valz < 0:
+            valz = f"{valz}%".replace(".",",")
+            mensagem += f'\n\U0001F4C9Variação: {valz}'
         else:
-            #return (fundo + " (" + isin["descricaoPt"].strip() + ")").replace("COTAS - COTAS", "COTAS -")
-            return fundo + " (" + capitalizar(isin["descricaoPt"].strip().replace("COTAS - COTAS", "COTAS")) + ")"
-    return cod_isin
+            valz = f"0,00%"
+            mensagem += f'\n\U0001F4C9Variação: {valz}'"""
+        
+    vp = f'R$ {round(vp*100//1/100,2):.2f}'.replace(".",",")
+    
+    pvp = f"{pvp:.2f}".replace(".",",")
+    
+    mensagem += f'\n\U0001F4B5VP/cota: {vp}'
+    if v_atual:
+        mensagem += f'\n\u2797P/VP atual: {pvp}'
+    #mensagem += f'\n\u26A0Alavancagem: {alavancagem:.2%}'.replace(".",",")
+        
+    #print(mensagem)
+    
+    #print(convv(pl))
+    #print(valz)
+    #print(vp)
+    #print(pvp)
+        
+    mensagem += "\n\n@RepositorioDeFIIs"
+    for u in usuarios:
+        bot.send_message(u, mensagem)
 
 #Thread(target=thread_teste).start()
-Thread(target=verificacao_periodica, daemon=False).start()
-Thread(target=verificacao_periodica_infra, daemon=True).start()
-Thread(target=thread_fechamento, daemon=True).start()
+#Thread(target=verificacao_periodica, daemon=False).start()
+#Thread(target=verificacao_periodica_infra, daemon=True).start()
+#Thread(target=thread_fechamento, daemon=True).start()
 #Thread(target=informar_fechamento2, daemon=True).start()
 bot.set_my_commands([telebot.types.BotCommand(comando[0], comando[1]) for comando in comandos])
 
@@ -2034,7 +2186,8 @@ bot.infinity_polling(timeout=200, long_polling_timeout = 5)
 #https://web.cvm.gov.br/app/fundosweb/patrimonioLiquido/getPatrimoniosLiquidos/17189
 
 #informar_atualizacao_patrimonial_fip("AATH11", ["556068392"])
-#informar_provento_infra1(buscar_ultimo_provento_infra("CDII11"), ["556068392"])
+#informar_provento_infra1(buscar_ultimo_provento_infra("BDIF11"), base_infra.buscar_seguidores("BDIF11"))
+#bot.send_message("727500403", "Parabéns! Agora você receberá todos os documentos e comunicados referentes ao fundo CPSH11.")
 
 """ticker = "JRDM11"
 doc_rend = buscar_ultimo_documento_provento(buscar_cnpj(ticker))
