@@ -7,7 +7,7 @@ import time
 import urllib
 from threading import Thread
 import re
-  
+   
 from telethon import TelegramClient
 import asyncio
 from telethon.tl.types import DocumentAttributeVideo, InputMediaUploadedDocument
