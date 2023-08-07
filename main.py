@@ -2176,6 +2176,11 @@ app = Flask(__name__)
 def hello():
     return "Hello Back4apper!"
 
+@app.route('/kill')
+def hello():
+    os._exit(0)
+    return "Killed"
+
 def flask_thread():
    app.run(host='0.0.0.0', port=8080)
 
