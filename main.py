@@ -2180,7 +2180,7 @@ def flask_thread():
    app.run(host='0.0.0.0', port=8080)
 
 def request_flask_thread():
-   while True
+   while True:
       try:
          requests.get("https://superfiis1-gilmartaj.b4a.run/")
          time.sleep(600)
