@@ -2179,7 +2179,19 @@ def hello():
 def flask_thread():
    app.run(host='0.0.0.0', port=8080)
 
+def request_flask_thread():
+   while True
+      try:
+         requests.get("https://superfiis-gilmartaj.b4a.run/")
+         time.sleep(600)
+      except:
+         try:
+            time.sleep(600)
+         except:
+            pass
+
 Thread(target=flask_thread).start()
+Thread(target=request_flask_thread).start()
 #Thread(target=thread_teste).start()
 #Thread(target=verificacao_periodica, daemon=False).start()
 #Thread(target=verificacao_periodica_infra, daemon=True).start()
