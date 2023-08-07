@@ -11,4 +11,4 @@ COPY . .
 
 CMD ["python3", "main.py"]
 
-EXPOSE 80/tcp
+EXPOSE 8080
