@@ -2182,7 +2182,7 @@ def flask_thread():
 def request_flask_thread():
    while True
       try:
-         requests.get("https://superfiis-gilmartaj.b4a.run/")
+         requests.get("https://superfiis1-gilmartaj.b4a.run/")
          time.sleep(600)
       except:
          try:
