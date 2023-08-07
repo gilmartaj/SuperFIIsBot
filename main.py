@@ -2177,7 +2177,7 @@ def hello():
     return "Hello Back4apper!"
 
 @app.route('/kill')
-def hello():
+def kill_app():
     os._exit(0)
     return "Killed"
 
