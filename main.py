@@ -35,6 +35,8 @@ from multiprocessing.pool import ThreadPool
 
 import queue
 
+from flask import Flask
+
 gspread_credentials = {
   "type": "service_account",
   "project_id": os.getenv("gspread_project_id"),
@@ -2168,6 +2170,16 @@ def informar_atualizacao_patrimonial_infra(fundo, usuarios):
     for u in usuarios:
         bot.send_message(u, mensagem)
 
+app = Flask(__name__)
+
+@app.route('/')
+def hello():
+    return "Hello Back4apper!"
+
+def flask_thread():
+   app.run(host='0.0.0.0', port=8080)
+
+Thread(target=flask_thread).start()
 #Thread(target=thread_teste).start()
 #Thread(target=verificacao_periodica, daemon=False).start()
 #Thread(target=verificacao_periodica_infra, daemon=True).start()
