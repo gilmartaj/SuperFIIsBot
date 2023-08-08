@@ -1,5 +1,5 @@
 import pandas as pd
- 
+
 import requests
 import telebot
 #import pandas as pd
@@ -37,6 +37,34 @@ import queue
 
 from flask import Flask
 
+app = Flask(__name__)
+
+@app.route('/')
+def hello():
+    return "Hello Back4apper!"
+
+@app.route('/kill')
+def kill_app():
+    os._exit(0)
+    return "Killed"
+
+def flask_thread():
+   app.run(host='0.0.0.0', port=8080)
+
+def request_flask_thread():
+   while True:
+      try:
+         time.sleep(600)
+         requests.get("https://superfiis1-gilmartaj.b4a.run/")
+      except:
+         try:
+            time.sleep(600)
+         except:
+            pass
+
+Thread(target=flask_thread).start()
+Thread(target=request_flask_thread).start()
+
 """gspread_credentials = {
   "type": "service_account",
   "project_id": os.getenv("gspread_project_id"),
@@ -60,13 +88,13 @@ sheet_infra = client.open("SeguidoresFI-Infras").sheet1
 
 telebot.apihelper.SESSION_TIME_TO_LIVE = 60 * 15
 
-bot_aux = os.getenv("BOT_AUX_TOKEN")
+bot_aux = os.getenv("bot_aux_token")
 bot_super = os.getenv("bot_super_token")
 
 TELETHON_API_ID = os.getenv("telethon_api_id")
 TELETHON_API_HASH = os.getenv("telethon_api_hash")
 
-bot = telebot.TeleBot(bot_aux, threaded=False)
+bot = telebot.TeleBot(bot_super)
 
 fila_doc = queue.Queue()
 
@@ -177,16 +205,18 @@ base_infra = BaseCache(sheet_infra)
 
 import multiprocessing
 lock = multiprocessing.Lock()
+log_sheet = gspread.service_account(filename='superfiisbot-9f67df851d9a.json').open("log").sheet1
 def log(mensagem):
     try:
         lock.acquire(timeout=2)
     except:
         return
     try:
+        asyncio.wait(log_sheet.append_row([str(agora()), mensagem]))
         with open("log.txt", "a") as log:
             log.write(f"[{agora()}] {mensagem}\n")
     except:
-        pass
+        traceback.print_exc()
     try:
         lock.release()
     except:
@@ -1791,7 +1821,7 @@ tokens_infra = {
     "XPIE11": "eyJpZGVudGlmaWVyRnVuZCI6IlhQSUUiLCJ0eXBlIjoxLCJwYWdlTnVtYmVyIjoxLCJwYWdlU2l6ZSI6MjB9",
 }
 
-"""ultimo_provento_infra = {}
+ultimo_provento_infra = {}
 for f in base_infra.colunas():
     try:
         print(f"Atualizando rendimento {f}...")
@@ -1802,7 +1832,7 @@ for f in base_infra.colunas():
             ultimo_provento_infra[f] = buscar_ultimo_provento_infra(f)
         except:
             traceback.print_exc()
-    time.sleep(2)"""
+    time.sleep(2)
        
 print("Robô iniciado.")
 #print(fiis_cnpj)
@@ -2170,37 +2200,10 @@ def informar_atualizacao_patrimonial_infra(fundo, usuarios):
     for u in usuarios:
         bot.send_message(u, mensagem)
 
-app = Flask(__name__)
-
-@app.route('/')
-def hello():
-    return "Hello Back4apper!"
-
-@app.route('/kill')
-def kill_app():
-    os._exit(0)
-    return "Killed"
-
-def flask_thread():
-   app.run(host='0.0.0.0', port=8080)
-
-def request_flask_thread():
-   while True:
-      try:
-         time.sleep(600)
-         requests.get("https://superfiis1-gilmartaj.b4a.run/")
-      except:
-         try:
-            time.sleep(600)
-         except:
-            pass
-
-Thread(target=flask_thread).start()
-Thread(target=request_flask_thread).start()
 #Thread(target=thread_teste).start()
-#Thread(target=verificacao_periodica, daemon=False).start()
-#Thread(target=verificacao_periodica_infra, daemon=True).start()
-#Thread(target=thread_fechamento, daemon=True).start()
+Thread(target=verificacao_periodica, daemon=False).start()
+Thread(target=verificacao_periodica_infra, daemon=True).start()
+Thread(target=thread_fechamento, daemon=True).start()
 #Thread(target=informar_fechamento2, daemon=True).start()
 bot.set_my_commands([telebot.types.BotCommand(comando[0], comando[1]) for comando in comandos])
 
