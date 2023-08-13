@@ -1032,6 +1032,7 @@ def relat():
     try:
        doc_relat = buscar_ultimo_relatorio_gerencial(buscar_cnpj("URPR11"))
        if doc_relat:
+           doc_relat["codigoFII"] = "URPR11"
            env2(doc_relat, ["556068392"])
            return "Pronto!"
        else:
