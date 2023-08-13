@@ -1031,11 +1031,11 @@ def handle_command(message):
 def relat():
     try:
        doc_relat = buscar_ultimo_relatorio_gerencial(buscar_cnpj("URPR11"))
-          if doc:
-              env2(doc_relat, ["556068392"])
-              return "Pronto!"
-          else:
-             return "Não encontrado"
+       if doc:
+           env2(doc_relat, ["556068392"])
+           return "Pronto!"
+       else:
+           return "Não encontrado"
     except Exception as e:
        return "Erro: " + str(e) 
 
