@@ -1031,7 +1031,7 @@ def handle_command(message):
 def relat():
     try:
        doc_relat = buscar_ultimo_relatorio_gerencial(buscar_cnpj("URPR11"))
-       if doc:
+       if doc_relat:
            env2(doc_relat, ["556068392"])
            return "Pronto!"
        else:
