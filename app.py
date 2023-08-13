@@ -1027,6 +1027,18 @@ def handle_command(message):
     else:
         bot.send_message(message.chat.id, f'Uso incorreto. Para ver o último relatório gerencial de um fundo, envie /relat CODIGO_FUNDO.\nEx.: "/relat CYCR11".', reply_to_message_id=message.id)
         
+@app.route('/relat')
+def relat():
+    try:
+       doc_relat = buscar_ultimo_relatorio_gerencial(buscar_cnpj("URPR11"))
+          if doc:
+              env2(doc_relat, ["556068392"])
+              return "Pronto!"
+          else:
+             return "Não encontrado"
+    except Exception as e:
+       return "Erro: " + str(e) 
+
 @bot.message_handler(commands=["infm"])
 def handle_command(message):
     #cmd = message.text.split()[0]
@@ -2203,7 +2215,7 @@ def informar_atualizacao_patrimonial_infra(fundo, usuarios):
     for u in usuarios:
         bot.send_message(u, mensagem)
 
-Thread(target=thread_teste).start()
+#Thread(target=thread_teste).start()
 #Thread(target=verificacao_periodica, daemon=False).start()
 #Thread(target=verificacao_periodica_infra, daemon=True).start()
 #Thread(target=thread_fechamento, daemon=True).start()
