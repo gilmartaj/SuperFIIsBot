@@ -94,7 +94,7 @@ bot_super = os.getenv("bot_super_token")
 TELETHON_API_ID = os.getenv("telethon_api_id")
 TELETHON_API_HASH = os.getenv("telethon_api_hash")
 
-bot = telebot.TeleBot(bot_aux)
+bot = telebot.TeleBot(bot_super)
 
 fila_doc = queue.Queue()
 
