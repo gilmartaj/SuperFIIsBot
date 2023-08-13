@@ -37,6 +37,16 @@ import queue
 
 from flask import Flask
 
+telebot.apihelper.SESSION_TIME_TO_LIVE = 60 * 15
+
+bot_aux = os.getenv("BOT_AUX_TOKEN")
+bot_super = os.getenv("BOT_SUPER_TOKEN")
+
+TELETHON_API_ID = os.getenv("TELETHON_API_ID")
+TELETHON_API_HASH = os.getenv("TELETHON_API_HASH")
+
+bot = telebot.TeleBot(bot_aux)
+
 app = Flask(__name__)
 
 @app.route('/')
@@ -54,7 +64,8 @@ def flask_thread():
 def request_flask_thread():
    while True:
       try:
-         time.sleep(600)
+         time.sleep(300)
+         bot.send_message("556068392", str(agora()))
          requests.get("https://superfiis1-gilmartaj.b4a.run/")
       except:
          try:
@@ -86,15 +97,7 @@ client = gspread.service_account(filename='superfiisbot-9f67df851d9a.json')
 sheet = client.open("SeguidoresFIIs").sheet1
 sheet_infra = client.open("SeguidoresFI-Infras").sheet1
 
-telebot.apihelper.SESSION_TIME_TO_LIVE = 60 * 15
 
-bot_aux = os.getenv("BOT_AUX_TOKEN")
-bot_super = os.getenv("BOT_SUPER_TOKEN")
-
-TELETHON_API_ID = os.getenv("TELETHON_API_ID")
-TELETHON_API_HASH = os.getenv("TELETHON_API_HASH")
-
-bot = telebot.TeleBot(bot_super)
 
 fila_doc = queue.Queue()
 
@@ -1820,7 +1823,7 @@ tokens_infra = {
     "VIGT11": "eyJpZGVudGlmaWVyRnVuZCI6IlZJR1QiLCJ0eXBlIjoxLCJwYWdlTnVtYmVyIjoxLCJwYWdlU2l6ZSI6MjB9",
     "XPIE11": "eyJpZGVudGlmaWVyRnVuZCI6IlhQSUUiLCJ0eXBlIjoxLCJwYWdlTnVtYmVyIjoxLCJwYWdlU2l6ZSI6MjB9",
 }
-
+"""
 ultimo_provento_infra = {}
 for f in base_infra.colunas():
     try:
@@ -1833,7 +1836,7 @@ for f in base_infra.colunas():
         except:
             traceback.print_exc()
     time.sleep(2)
-       
+"""       
 print("Robô iniciado.")
 #print(fiis_cnpj)
 
@@ -2201,9 +2204,9 @@ def informar_atualizacao_patrimonial_infra(fundo, usuarios):
         bot.send_message(u, mensagem)
 
 #Thread(target=thread_teste).start()
-Thread(target=verificacao_periodica, daemon=False).start()
-Thread(target=verificacao_periodica_infra, daemon=True).start()
-Thread(target=thread_fechamento, daemon=True).start()
+#Thread(target=verificacao_periodica, daemon=False).start()
+#Thread(target=verificacao_periodica_infra, daemon=True).start()
+#Thread(target=thread_fechamento, daemon=True).start()
 #Thread(target=informar_fechamento2, daemon=True).start()
 bot.set_my_commands([telebot.types.BotCommand(comando[0], comando[1]) for comando in comandos])
 
