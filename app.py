@@ -35,7 +35,16 @@ from multiprocessing.pool import ThreadPool
 
 import queue
 
-from flask import Flask
+from flask import Flask, request
+
+telebot.apihelper.SESSION_TIME_TO_LIVE = 60 * 15
+
+bot_aux = os.getenv("bot_aux_token")
+bot_super = os.getenv("bot_super_token")
+#tgbotcmd_token = os.getenv("tgbotcmd_token")
+
+TELETHON_API_ID = os.getenv("telethon_api_id")
+TELETHON_API_HASH = os.getenv("telethon_api_hash")
 
 app = Flask(__name__)
 
@@ -47,6 +56,29 @@ def hello():
 def kill_app():
     os._exit(0)
     return "Killed"
+    
+@app.route('/tgbotcmd/relat/<fundo>/<usuario>')
+def relat(fundo,usuario):
+
+    headers = request.headers
+    auth = headers.get("token")
+    #if auth != tgbotcmd_token:
+    #    return "Não autorizado", 401
+
+    try:
+        fundo = fundo.upper()
+        cnpj = buscar_cnpj(fundo)
+        if not cnpj:
+            return "Fundo não encontrado"
+        doc_relat = buscar_ultimo_relatorio_gerencial(cnpj)
+        if doc_relat:
+            doc_relat["codigoFII"] = fundo
+            env2(doc_relat, [usuario])
+            return "Pronto!"
+        else:
+            return "Nenhum relatório encontrado para este fundo."
+    except Exception as e:
+       return "Erro: " + traceback.format_exc() 
 
 def flask_thread():
    app.run(host='0.0.0.0', port=8080)
@@ -85,14 +117,6 @@ client = gspread.service_account(filename='superfiisbot-9f67df851d9a.json')
 
 sheet = client.open("SeguidoresFIIs").sheet1
 sheet_infra = client.open("SeguidoresFI-Infras").sheet1
-
-telebot.apihelper.SESSION_TIME_TO_LIVE = 60 * 15
-
-bot_aux = os.getenv("bot_aux_token")
-bot_super = os.getenv("bot_super_token")
-
-TELETHON_API_ID = os.getenv("telethon_api_id")
-TELETHON_API_HASH = os.getenv("telethon_api_hash")
 
 bot = telebot.TeleBot(bot_super)
 
@@ -1026,19 +1050,6 @@ def handle_command(message):
         bot.send_message(message.chat.id, f'Informe o código de negociação do fundo que você deseja ver o último relatório gerencial publicado.\nEx.: "/relat CYCR11".', reply_to_message_id=message.id)
     else:
         bot.send_message(message.chat.id, f'Uso incorreto. Para ver o último relatório gerencial de um fundo, envie /relat CODIGO_FUNDO.\nEx.: "/relat CYCR11".', reply_to_message_id=message.id)
-        
-@app.route('/relat')
-def relat():
-    try:
-       doc_relat = buscar_ultimo_relatorio_gerencial(buscar_cnpj("URPR11"))
-       if doc_relat:
-           doc_relat["codigoFII"] = "URPR11"
-           env2(doc_relat, ["556068392"])
-           return "Pronto!"
-       else:
-           return "Não encontrado"
-    except Exception as e:
-       return "Erro: " + traceback.format_exc() 
 
 @bot.message_handler(commands=["infm"])
 def handle_command(message):
