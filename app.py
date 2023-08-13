@@ -1037,7 +1037,7 @@ def relat():
        else:
            return "Não encontrado"
     except Exception as e:
-       return "Erro: " + str(e) 
+       return "Erro: " + traceback.format_exc() 
 
 @bot.message_handler(commands=["infm"])
 def handle_command(message):
