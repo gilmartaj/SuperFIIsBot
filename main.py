@@ -65,11 +65,12 @@ def request_flask_thread():
    while True:
       try:
          time.sleep(300)
-         bot.send_message("556068392", str(agora()))
+         #bot.send_message("556068392", str(agora()))
          requests.get("https://superfiis1-gilmartaj.b4a.run/")
+         requests.get(https://aaa-2jrx.onrender.com/)
       except:
          try:
-            time.sleep(600)
+            time.sleep(300)
          except:
             pass
 
@@ -1018,11 +1019,13 @@ def handle_command(message):
             bot.send_message(message.chat.id, f"Não encontramos em nossa base de dados o fundo {ticker}.", reply_to_message_id=message.id)
             return
         enviada = bot.send_message(message.chat.id, f"Buscando...")
-        doc_relat = buscar_ultimo_relatorio_gerencial(buscar_cnpj(ticker))
-        if doc_relat:
-            doc_relat["codigoFII"] = ticker
-            env2(doc_relat, [message.from_user.id])
-        else:
+        #doc_relat = buscar_ultimo_relatorio_gerencial(buscar_cnpj(ticker))
+        req = requests.get(f"https://aaa-2jrx.onrender.com/tgbotcmd/relat/{ticker}/{message.from_user.id}")
+        #if doc_relat:
+        #    doc_relat["codigoFII"] = ticker
+        #    env2(doc_relat, [message.from_user.id])
+        #else:
+        if req.text == "Nenhum relatório encontrado para este fundo.":
             bot.send_message(message.chat.id, f'Não encontramos informações sobre relatórios gerenciais deste fundo.', reply_to_message_id=message.id)    
         bot.delete_message(message.chat.id, enviada.id)
     elif len(message.text.strip().split()) == 1:
