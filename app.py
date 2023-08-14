@@ -1662,7 +1662,7 @@ def agora():
 
 @app.route('/verificar')
 def verificar_app():
-    Thread(target=verificar).start()
+    verificar()
     return "Verificando..."
     
 def exec_ver(parada):
