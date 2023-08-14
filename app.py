@@ -1586,6 +1586,7 @@ def verificar():
     global fila_doc
     print("Verificando...")
     for f in base.colunas():
+        print(f)
         seguidores = ["-743953207"]
         if len(seguidores) > 0:
             #print(f, len(seguidores))
@@ -1661,7 +1662,7 @@ def agora():
 
 @app.route('/verificar')
 def verificar_app():
-    Thread(target=verificar, daemon=True).start()
+    Thread(target=verificar).start()
     return "Verificando..."
     
 def exec_ver(parada):
