@@ -64,7 +64,7 @@ def flask_thread():
 def request_flask_thread():
    while True:
       try:
-         time.sleep(300)
+         time.sleep(600)
          #bot.send_message("556068392", str(agora()))
          requests.get("https://superfiis1-gilmartaj.b4a.run/")
          requests.get("https://aaa-2jrx.onrender.com/verificar")
