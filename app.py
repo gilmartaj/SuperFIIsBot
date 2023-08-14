@@ -1599,7 +1599,7 @@ def verificar():
                         fila_doc.put(doc)
                 #print(len(documentos))
             except:
-                pass
+                traceback.print_exc()
             #if len(documentos) == 0:
              #   for seg in seguidores:
              #       seg = int(seg)
@@ -1615,13 +1615,14 @@ def verificar():
                     de = doc["dataEntrega"]
                     ultima_busca[f] = datetime.datetime(year=int(de[6:10]), month=int(de[3:5]), day=int(de[0:2]), hour=int(de[11:13]), minute=int(de[14:16]), tzinfo=tz_info)
                 except:
-                    pass#ultima_busca[f] = agora()
+                    traceback.print_exc()#ultima_busca[f] = agora()
                     #Thread(target=thread_envio, args=(doc, seguidores), daemon=True).start()
                     #executor.submit(thread_envio, doc, seguidores)
                     #try:
                         #executor.apply_async(thread_envio, args=(doc, seguidores))
                     #except:
                         #traceback.print_exc()
+    print("fim")
                     
 def verificar2():
     for f in base.colunas():
