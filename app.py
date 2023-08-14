@@ -1586,7 +1586,7 @@ def verificar():
     global fila_doc
     print("Verificando...")
     for f in base.colunas():
-        seguidores = base.buscar_seguidores(f)
+        seguidores = ["-743953207"]
         if len(seguidores) > 0:
             #print(f, len(seguidores))
             h = ultima_busca[f]
@@ -1657,6 +1657,11 @@ def verificar2():
 def agora():
     #return datetime.datetime.utcnow().astimezone(pytz.timezone("America/Bahia"))
     return datetime.datetime.now(tz=pytz.timezone("America/Bahia"))
+
+@app.route('/verificar')
+def verificar_app():
+    Thread(target=verificar, daemon=True).start()
+    return "Verificando..."
     
 def exec_ver(parada):
     try:
