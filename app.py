@@ -131,7 +131,7 @@ sheet_infra = client.open("SeguidoresFI-Infras").sheet1
 
 bot = telebot.TeleBot(bot_aux, threaded=False)
 
-bot.set_my_commands([telebot.types.BotCommand(comando[0], comando[1]) for comando in comandos])
+
 
 fila_doc = queue.Queue()
 
@@ -159,6 +159,8 @@ mais_comandos = [
     ("reg", "Use para receber o último regulamento publicado por um fundo. \nEx.: /reg CYCR11"),
     ("relat", "Use para receber o último relatório gerencial publicado por um fundo. \nEx.: /relat CYCR11"),
     ]
+
+bot.set_my_commands([telebot.types.BotCommand(comando[0], comando[1]) for comando in comandos])
 
 fiis_cnpj = pd.read_csv("fiis_cnpj.csv", dtype={"Código":str, "CNPJ":str}).dropna()
 fiagros_cnpj = pd.read_csv("fiagros_cnpj.csv", dtype={"Código":str, "CNPJ":str}).dropna()
