@@ -129,7 +129,7 @@ client = gspread.service_account(filename='superfiisbot-9f67df851d9a.json')
 sheet = client.open("SeguidoresFIIs").sheet1
 sheet_infra = client.open("SeguidoresFI-Infras").sheet1
 
-bot = telebot.TeleBot(bot_aux)
+bot = telebot.TeleBot(bot_aux, threaded=False)
 
 fila_doc = queue.Queue()
 
