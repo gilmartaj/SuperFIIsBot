@@ -8,6 +8,7 @@ import urllib
 from threading import Thread
 import threading
 import re
+import gc
    
 from telethon import TelegramClient
 import asyncio
@@ -81,13 +82,13 @@ comandos = [
     ("cnpj", 'Exibe o CNPJ de um FII. Ex.: "/cnpj URPR11".'),
     ("contato", "Exibe informações para contato."),
     ("cotacao", 'Mostra a cotação de um fundo. Ex.: "/cotacao URPR11"'),
-    ("docs", 'Receba os documentos emitidos pelo fundo nos últimos 30 dias. Ex.: "/docs URPR11"'),
+    #("docs", 'Receba os documentos emitidos pelo fundo nos últimos 30 dias. Ex.: "/docs URPR11"'),
     ("desinscrever", 'Use para deixar de seguir um FII que você segue. Ex.: "/desinscrever URPR11"'),
     ("doacao", "Ajude a manter o projeto vivo doando a partir de 1 centavo. Chave Pix: gil77891@gmail.com"),
     ("fundos_seguidos", "Lista todos os fundos imobiliários que você segue."),
     ("rend", 'Informa a última distribuição de proventos do fundo. Ex.: "/rend URPR11"'),
     ("seguir", 'Use para receber todos os documentos e informações de rendimentos de um FII. Ex.: "/seguir URPR11"'), 
-    ("ultimos_documentos", 'Receba os documentos emitidos pelo fundo nos últimos 30 dias. Ex.: "/ultimos_documentos URPR11"'),
+    #("ultimos_documentos", 'Receba os documentos emitidos pelo fundo nos últimos 30 dias. Ex.: "/ultimos_documentos URPR11"'),
     ("mais", "Mais comandos..."),
     ]
     
@@ -1102,7 +1103,7 @@ def handle_command(message):
     else:
         bot.send_message(message.chat.id, f'Uso incorreto. Para aproveitar essa função, envie /fnet CODIGO_FUNDO.\nEx.: "/fnet CYCR11".', reply_to_message_id=message.id)
             
-@bot.message_handler(commands=["docs", "ultimos_documentos"])
+"""@bot.message_handler(commands=["docs", "ultimos_documentos"])
 def handle_command(message):
     cmd = message.text.split()[0]
     #print(message)
@@ -1143,7 +1144,7 @@ def handle_command(message):
     elif len(message.text.strip().split()) == 1:
         bot.send_message(message.chat.id, f'Informe o código de negociação do fundo que você deseja ver os últimos documentos.\nEx.: "{cmd} URPR11".', reply_to_message_id=message.id)
     else:
-        bot.send_message(message.chat.id, f'Uso incorreto. Para receber os comunicados mais recentes de um fundo, envie {cmd} CODIGO_FUNDO.\nEx.: "{cmd} URPR11".', reply_to_message_id=message.id)
+        bot.send_message(message.chat.id, f'Uso incorreto. Para receber os comunicados mais recentes de um fundo, envie {cmd} CODIGO_FUNDO.\nEx.: "{cmd} URPR11".', reply_to_message_id=message.id)"""
 
 @bot.message_handler(commands=["seguir"])
 def handle_command(message):
@@ -2268,15 +2269,19 @@ app = Flask(__name__)
 
 @app.route('/')
 def hello():
-    bot.set_webhook(url=bot_url+"/whk")
+    bot.set_webhook(url=bot_url+"/whk",max_connections=1)
     bot.send_message("-743953207", "pronto!")
     return "Super FIIs Bot"
     
 @app.route('/whk', methods=['POST'])
 def whk():
-    json_string = request.get_data().decode('utf-8')
-    update = telebot.types.Update.de_json(json_string)
-    bot.process_new_updates([update])
+    try:
+        json_string = request.get_data().decode('utf-8')
+        update = telebot.types.Update.de_json(json_string)
+        gc.collect()
+        bot.process_new_updates([update])
+    except:
+        pass
     return jsonify(True), 200
 
 #log(f"a", nome=f"b", seg_id=f"c", comando=f"{'/d'.split()[0]}")
