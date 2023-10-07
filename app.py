@@ -36,7 +36,9 @@ from multiprocessing.pool import ThreadPool
 
 import queue
 
-import super_fiis_notificador as sfnot
+#import super_fiis_notificador as sfnot
+
+from flask import Flask, request, jsonify
 
 gspread_credentials = {
   "type": "service_account",
@@ -67,7 +69,9 @@ bot_super = os.getenv("bot_super_token")
 TELETHON_API_ID = os.getenv("telethon_api_id")
 TELETHON_API_HASH = os.getenv("telethon_api_hash")
 
-bot = telebot.TeleBot(bot_super)
+bot = telebot.TeleBot(bot_aux)
+
+bot_url = os.getenv("bot_url")
 
 fila_doc = queue.Queue()
 
@@ -95,6 +99,8 @@ mais_comandos = [
     ("reg", "Use para receber o último regulamento publicado por um fundo. \nEx.: /reg CYCR11"),
     ("relat", "Use para receber o último relatório gerencial publicado por um fundo. \nEx.: /relat CYCR11"),
     ]
+
+bot.set_my_commands([telebot.types.BotCommand(comando[0], comando[1]) for comando in comandos])
 
 fiis_cnpj = pd.read_csv("fiis_cnpj.csv", dtype={"Código":str, "CNPJ":str}).dropna()
 fiagros_cnpj = pd.read_csv("fiagros_cnpj.csv", dtype={"Código":str, "CNPJ":str}).dropna()
@@ -176,24 +182,16 @@ class BaseCache:
 base = BaseCache(sheet)
 base_infra = BaseCache(sheet_infra)
 
-import multiprocessing
-lock = multiprocessing.Lock()
+#import threading
+#lock = threading.Lock()
 log_sheet = gspread.service_account_from_dict(gspread_credentials).open("log").sheet1
-def log(mensagem):
+def log(mensagem, nome="", seg_id="", comando=""):
     try:
-        lock.acquire(timeout=2)
+        log_sheet.append_row([str(agora()), nome, seg_id, comando, mensagem])
+        #with open("log.txt", "a") as log:
+            #log.write(f"[{agora()}] {mensagem}\n")
     except:
-        return
-    try:
-        #log_sheet.append_row([str(agora()), mensagem])
-        with open("log.txt", "a") as log:
-            log.write(f"[{agora()}] {mensagem}\n")
-    except:
-        pass
-    try:
-        lock.release()
-    except:
-        pass
+        traceback.print_exc()
 
 def informar_proventos(doc, usuarios):
 #422748
@@ -895,7 +893,7 @@ def handle_command(message):
 def handle_command(message):
     #cmd = message.text.split()[0]
     #print(message)
-    log(f"{message.from_user.first_name} ({message.from_user.id}) {message.text}")
+    log(f"{message.text}", nome=f"{message.from_user.first_name}", seg_id=f"{message.from_user.id}", comando=f"{message.text.split()[0]}")
     print(agora(), message.from_user.first_name, message.text)
     if len(message.text.strip().split()) == 2:
         ticker = message.text.split()[1].strip().upper()
@@ -932,7 +930,7 @@ def handle_command(message):
 def handle_command(message):
     #cmd = message.text.split()[0]
     #print(message)
-    log(f"{message.from_user.first_name} ({message.from_user.id}) {message.text}")
+    log(f"{message.text}", nome=f"{message.from_user.first_name}", seg_id=f"{message.from_user.id}", comando=f"{message.text.split()[0]}")
     print(agora(), message.from_user.first_name, message.text)
     try:
         if len(message.text.strip().split()) == 2:
@@ -970,7 +968,7 @@ def handle_command(message):
 def handle_command(message):
     #cmd = message.text.split()[0]
     #print(message)
-    log(f"{message.from_user.first_name} ({message.from_user.id}) {message.text}")
+    log(f"{message.text}", nome=f"{message.from_user.first_name}", seg_id=f"{message.from_user.id}", comando=f"{message.text.split()[0]}")
     print(agora(), message.from_user.first_name, message.text)
     if len(message.text.strip().split()) == 2:
         ticker = message.text.split()[1].strip().upper()
@@ -1004,7 +1002,7 @@ def handle_command(message):
 def handle_command(message):
     #cmd = message.text.split()[0]
     #print(message)
-    log(f"{message.from_user.first_name} ({message.from_user.id}) {message.text}")
+    log(f"{message.text}", nome=f"{message.from_user.first_name}", seg_id=f"{message.from_user.id}", comando=f"{message.text.split()[0]}")
     print(agora(), message.from_user.first_name, message.text)
     if len(message.text.strip().split()) == 2:
         ticker = message.text.split()[1].strip().upper()
@@ -1031,7 +1029,7 @@ def handle_command(message):
 def handle_command(message):
     #cmd = message.text.split()[0]
     #print(message)
-    log(f"{message.from_user.first_name} ({message.from_user.id}) {message.text}")
+    log(f"{message.text}", nome=f"{message.from_user.first_name}", seg_id=f"{message.from_user.id}", comando=f"{message.text.split()[0]}")
     print(agora(), message.from_user.first_name, message.text)
     if len(message.text.strip().split()) == 2:
         ticker = message.text.split()[1].strip().upper()
@@ -1058,7 +1056,7 @@ def handle_command(message):
 def handle_command(message):
     #cmd = message.text.split()[0]
     #print(message)
-    log(f"{message.from_user.first_name} ({message.from_user.id}) {message.text}")
+    log(f"{message.text}", nome=f"{message.from_user.first_name}", seg_id=f"{message.from_user.id}", comando=f"{message.text.split()[0]}")
     print(agora(), message.from_user.first_name, message.text)
     if len(message.text.strip().split()) == 2:
         ticker = message.text.split()[1].strip().upper()
@@ -1085,7 +1083,7 @@ def handle_command(message):
 def handle_command(message):
     #cmd = message.text.split()[0]
     #print(message)
-    log(f"{message.from_user.first_name} ({message.from_user.id}) {message.text}")
+    log(f"{message.text}", nome=f"{message.from_user.first_name}", seg_id=f"{message.from_user.id}", comando=f"{message.text.split()[0]}")
     print(agora(), message.from_user.first_name, message.text)
     if len(message.text.strip().split()) == 2:
         ticker = message.text.split()[1].strip().upper()
@@ -1108,7 +1106,7 @@ def handle_command(message):
 def handle_command(message):
     cmd = message.text.split()[0]
     #print(message)
-    log(f"{message.from_user.first_name} ({message.from_user.id}) {message.text}")
+    log(f"{message.text}", nome=f"{message.from_user.first_name}", seg_id=f"{message.from_user.id}", comando=f"{message.text.split()[0]}")
     print(agora(), message.from_user.first_name, message.text)
     if len(message.text.strip().split()) == 2:
         ticker = message.text.split()[1].strip().upper()
@@ -1150,7 +1148,7 @@ def handle_command(message):
 @bot.message_handler(commands=["seguir"])
 def handle_command(message):
     #print(message)
-    log(f"{message.from_user.first_name} ({message.from_user.id}) {message.text}")
+    log(f"{message.text}", nome=f"{message.from_user.first_name}", seg_id=f"{message.from_user.id}", comando=f"{message.text.split()[0]}")
     print(agora(), message.from_user.first_name, message.text)
     if len(message.text.strip().split()) == 2:
         ticker = message.text.split()[1].strip().upper()
@@ -1175,7 +1173,7 @@ def handle_command(message):
 @bot.message_handler(commands=["desinscrever"])
 def handle_command(message):
     #print(message)
-    log(f"{message.from_user.first_name} ({message.from_user.id}) {message.text}")
+    log(f"{message.text}", nome=f"{message.from_user.first_name}", seg_id=f"{message.from_user.id}", comando=f"{message.text.split()[0]}")
     print(agora(), message.from_user.first_name, message.text)
     if len(message.text.split()) != 2:
         bot.send_message(message.chat.id, 'Uso incorreto. Para deixar de seguir um fundo envie /desinscrever CODIGO_FUNDO. Ex.: "/desinscrever URPR11"', reply_to_message_id=message.id)
@@ -1198,7 +1196,7 @@ def handle_command(message):
 @bot.message_handler(commands=["fundos_seguidos"])
 def handle_command(message):
     #print(message)
-    log(f"{message.from_user.first_name} ({message.from_user.id}) {message.text}")
+    log(f"{message.text}", nome=f"{message.from_user.first_name}", seg_id=f"{message.from_user.id}", comando=f"{message.text.split()[0]}")
     print(message.from_user.first_name, message.text)
     fs = base.buscar_seguidos(str(message.from_user.id))
     fs.extend(base_infra.buscar_seguidos(str(message.from_user.id)))
@@ -1427,7 +1425,7 @@ def handle_command(message):
         
 @bot.message_handler(commands=["cnpj"])
 def handle_command(message):
-    log(f"{message.from_user.first_name} ({message.from_user.id}) {message.text}")
+    log(f"{message.text}", nome=f"{message.from_user.first_name}", seg_id=f"{message.from_user.id}", comando=f"{message.text.split()[0]}")
     print(agora(), message.from_user.first_name, message.text)
     if len(message.text.strip().split()) == 2:
         try:
@@ -1452,7 +1450,7 @@ def mensagem_instrucoes(comandos=comandos):
 def handle_command(message):
     #print(message)
     #bot.forward_message("-743953207", message.chat.id, message.id)
-    log(f"{message.from_user.first_name} ({message.from_user.id}) {message.text}")
+    log(f"{message.text}", nome=f"{message.from_user.first_name}", seg_id=f"{message.from_user.id}", comando=f"{message.text.split()[0]}")
     bot.send_message("-743953207", f"{message.from_user.first_name} ({message.from_user.id}) {message.text}")
     print(agora(), message.from_user.first_name, message.from_user.id, message.text)
     bot.send_message(message.from_user.id, "Seja bem-vindo ao @SuperFIIsBot!!!\n\n")
@@ -1467,26 +1465,26 @@ def handle_command(message):
     print(agora(), message.from_user.first_name, message.from_user.id, message.text)
     bot.send_message(message.from_user.id, "Segue a lista de comandos extra que o bot disponibiliza:\n\n"+mensagem_instrucoes(mais_comandos))
     bot.send_message(message.from_user.id, "Em caso de dúvidas ou sugestões, entre em contato diretamente com o desenvolvedor @gilmartaj, ficaremos felizes em ajudar!")
-    log(f"{message.from_user.first_name} ({message.from_user.id}) {message.text}")
+    log(f"{message.text}", nome=f"{message.from_user.first_name}", seg_id=f"{message.from_user.id}", comando=f"{message.text.split()[0]}")
     
 @bot.message_handler(commands=["ajuda"])
 def handle_command(message):
     #print(message)
     print(agora(), message.from_user.first_name, message.text)
     bot.send_message(message.from_user.id, "Segue a lista de comandos disponíveis e suas respectivas descrições:\n\n"+mensagem_instrucoes()+"\nEm caso de dúvidas ou sugestões, entre em contato diretamente com o desenvolvedor @gilmartaj", reply_to_message_id=message.id)
-    log(f"{message.from_user.first_name} ({message.from_user.id}) {message.text}")
+    log(f"{message.text}", nome=f"{message.from_user.first_name}", seg_id=f"{message.from_user.id}", comando=f"{message.text.split()[0]}")
     
 @bot.message_handler(commands=["doacao"])
 def handle_command(message):
     print(agora(), message.from_user.first_name, message.from_user.id, message.text)
     bot.send_message(message.from_user.id, "Além do tempo de desenvolvimento, manter o bot rodando exige um servidor, e isso tem um custo. Se o bot é útil para você e não lhe fazem falta alguns centavos, ajude o projeto doando a partir de 1 centavo para a Chave Pix de e-mail do desenvolvedor: gil77891@gmail.com\n\nObs.: Não use este e-mail para contato, isto pode ser feito aqui mesmo pelo Telegram, enviando uma mensagem para @gilmartaj.")
-    log(f"{message.from_user.first_name} ({message.from_user.id}) {message.text}")
+    log(f"{message.text}", nome=f"{message.from_user.first_name}", seg_id=f"{message.from_user.id}", comando=f"{message.text.split()[0]}")
     
 @bot.message_handler(commands=["contato"])
 def handle_command(message):
     print(agora(), message.from_user.first_name, message.from_user.id, message.text)
     bot.send_message(message.from_user.id, "Para dúvidas, sugestões e reportes de erros, envie uma mensagem direta para o desenvolvedor @gilmartaj, aqui mesmo pelo Telegram.")
-    log(f"{message.from_user.first_name} ({message.from_user.id}) {message.text}")
+    log(f"{message.text}", nome=f"{message.from_user.first_name}", seg_id=f"{message.from_user.id}", comando=f"{message.text.split()[0]}")
     
 @bot.message_handler(commands=["infprv"])
 def handle_command(message):
@@ -1719,13 +1717,14 @@ def thread_teste():
         
 tz_info = agora().tzinfo
       
-ultima_busca = {}
+"""ultima_busca = {}
 for f in base.colunas():
     ultima_busca[f] = agora() - datetime.timedelta(minutes=30)
     
 ultima_busca_infra = {}
 for f in base_infra.colunas():
     ultima_busca_infra[f] = agora() - datetime.timedelta(minutes=30)
+"""
     
 def verificar_infra():
     #print("Verificando...")
@@ -1814,7 +1813,7 @@ tokens_infra = {
     "XPIE11": "eyJpZGVudGlmaWVyRnVuZCI6IlhQSUUiLCJ0eXBlIjoxLCJwYWdlTnVtYmVyIjoxLCJwYWdlU2l6ZSI6MjB9",
 }
 
-ultimo_provento_infra = {}
+"""ultimo_provento_infra = {}
 for f in base_infra.colunas():
     try:
         print(f"Atualizando rendimento {f}...")
@@ -1825,7 +1824,7 @@ for f in base_infra.colunas():
             ultimo_provento_infra[f] = buscar_ultimo_provento_infra(f)
         except:
             traceback.print_exc()
-    time.sleep(2)
+    time.sleep(2)"""
        
 print("Robô iniciado.")
 #print(fiis_cnpj)
@@ -2194,13 +2193,13 @@ def informar_atualizacao_patrimonial_infra(fundo, usuarios):
         bot.send_message(u, mensagem)
 
 #Thread(target=thread_teste).start()
-Thread(target=verificacao_periodica, daemon=False).start()
-Thread(target=verificacao_periodica_infra, daemon=True).start()
-Thread(target=thread_fechamento, daemon=True).start()
+#Thread(target=verificacao_periodica, daemon=False).start()
+#Thread(target=verificacao_periodica_infra, daemon=True).start()
+#Thread(target=thread_fechamento, daemon=True).start()
 #Thread(target=informar_fechamento2, daemon=True).start()
-bot.set_my_commands([telebot.types.BotCommand(comando[0], comando[1]) for comando in comandos])
 
-bot.infinity_polling(timeout=200, long_polling_timeout = 5)
+
+#bot.infinity_polling(timeout=200, long_polling_timeout = 5)
 
 #docs = buscar_documentos_infra(tokens_infra["JURO11"], agora()-datetime.timedelta(days=10))
 #print(len(docs))
@@ -2264,3 +2263,22 @@ doc = buscar_documentos(buscar_cnpj("APTO11"), agora()-datetime.timedelta(days=2
 doc["codigoFII"] = "APTO11"
 print(doc)
 informar_atualizacao_patrimonial(doc, ["556068392"])"""
+
+app = Flask(__name__)
+
+@app.route('/')
+def hello():
+    bot.set_webhook(url=bot_url+"/whk")
+    bot.send_message("-743953207", "pronto!")
+    return "Super FIIs Bot"
+    
+@app.route('/whk', methods=['GET'])
+def whk():
+    json_string = request.get_data().decode('utf-8')
+    update = telebot.types.Update.de_json(json_string)
+    bot.process_new_updates([update])
+    return jsonify(True), 200
+
+log(f"a", nome=f"b", seg_id=f"c", comando=f"{'/d'.split()[0]}")
+    
+app.run(host='0.0.0.0', port=8080)
