@@ -131,6 +131,8 @@ sheet_infra = client.open("SeguidoresFI-Infras").sheet1
 
 bot = telebot.TeleBot(bot_aux, threaded=False)
 
+bot.set_my_commands([telebot.types.BotCommand(comando[0], comando[1]) for comando in comandos])
+
 fila_doc = queue.Queue()
 
 comandos = [
