@@ -35,7 +35,7 @@ from multiprocessing.pool import ThreadPool
 
 import queue
 
-from flask import Flask
+from flask import Flask, request
 
 telebot.apihelper.SESSION_TIME_TO_LIVE = 60 * 15
 
@@ -49,14 +49,26 @@ bot = telebot.TeleBot(bot_aux)
 
 app = Flask(__name__)
 
+bot_url = "https://aaa-2jrx.onrender.com"
+
 @app.route('/')
 def hello():
+    bot.remove_webhook()
+    bot.set_webhook(url=bot_url+"/whk")
+    bot.send_message("556068392", "pronto!")
     return "Hello Back4apper!"
 
 @app.route('/kill')
 def kill_app():
     os._exit(0)
     return "Killed"
+
+@app.route('/whk', methods=['POST'])
+def getMessage():
+    json_string = request.get_data().decode('utf-8')
+    update = telebot.types.Update.de_json(json_string)
+    bot.process_new_updates([update])
+    return "!", 200
 
 def flask_thread():
    app.run(host='0.0.0.0', port=8080)
@@ -2211,9 +2223,9 @@ def informar_atualizacao_patrimonial_infra(fundo, usuarios):
 #Thread(target=verificacao_periodica_infra, daemon=True).start()
 #Thread(target=thread_fechamento, daemon=True).start()
 #Thread(target=informar_fechamento2, daemon=True).start()
-bot.set_my_commands([telebot.types.BotCommand(comando[0], comando[1]) for comando in comandos])
+#bot.set_my_commands([telebot.types.BotCommand(comando[0], comando[1]) for comando in comandos])
 
-bot.infinity_polling(timeout=200, long_polling_timeout = 5)
+#bot.infinity_polling(timeout=200, long_polling_timeout = 5)
 
 #docs = buscar_documentos_infra(tokens_infra["JURO11"], agora()-datetime.timedelta(days=10))
 #print(len(docs))
