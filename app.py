@@ -2272,7 +2272,7 @@ def hello():
     bot.send_message("-743953207", "pronto!")
     return "Super FIIs Bot"
     
-@app.route('/whk', methods=['GET'])
+@app.route('/whk', methods=['POST'])
 def whk():
     json_string = request.get_data().decode('utf-8')
     update = telebot.types.Update.de_json(json_string)
