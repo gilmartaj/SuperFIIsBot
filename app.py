@@ -2279,6 +2279,6 @@ def whk():
     bot.process_new_updates([update])
     return jsonify(True), 200
 
-log(f"a", nome=f"b", seg_id=f"c", comando=f"{'/d'.split()[0]}")
+#log(f"a", nome=f"b", seg_id=f"c", comando=f"{'/d'.split()[0]}")
     
-app.run(host='0.0.0.0', port=8080)
+#app.run(host='0.0.0.0', port=8080)
