@@ -654,7 +654,7 @@ def envio_multiplo(doc, file_id, usuarios, caption_):
                 time.sleep(0.05)
             except:
                 try:
-                    bot.send_message("-743953207", f"ERRO: {u}")
+                    pass#bot.send_message("-743953207", f"ERRO: {u}")
                 except:
                     print(f"ERRO: {u}")
                     
@@ -679,7 +679,7 @@ def envio_multiplo_telebot(doc, usuarios, caption_):
                 )
         except:
             try:
-                bot.send_message("-743953207", f"ERRO: {u}")
+                pass#bot.send_message("-743953207", f"ERRO: {u}")
             except:
                 print(f"ERRO: {u}")
             return
