@@ -1452,7 +1452,7 @@ def handle_command(message):
     #print(message)
     #bot.forward_message("-743953207", message.chat.id, message.id)
     log(f"{message.text}", nome=f"{message.from_user.first_name}", seg_id=f"{message.from_user.id}", comando=f"{message.text.split()[0]}")
-    bot.send_message("-743953207", f"{message.from_user.first_name} ({message.from_user.id}) {message.text}")
+    #bot.send_message("-743953207", f"{message.from_user.first_name} ({message.from_user.id}) {message.text}")
     print(agora(), message.from_user.first_name, message.from_user.id, message.text)
     bot.send_message(message.from_user.id, "Seja bem-vindo ao @SuperFIIsBot!!!\n\n")
     bot.send_message(message.from_user.id, "Segue a lista de comandos disponíveis e suas respectivas descrições:\n\n"+mensagem_instrucoes())
