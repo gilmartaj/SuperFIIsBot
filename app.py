@@ -2270,7 +2270,7 @@ app = Flask(__name__)
 @app.route('/')
 def hello():
     bot.set_webhook(url=bot_url+"/whk",max_connections=1)
-    bot.send_message("-743953207", "pronto!")
+    #bot.send_message("-743953207", "pronto!")
     return "Super FIIs Bot"
     
 @app.route('/whk', methods=['POST'])
