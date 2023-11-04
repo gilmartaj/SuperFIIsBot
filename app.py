@@ -796,6 +796,8 @@ def buscar_cnpj(codigo_fii):
 
 
 def xml_pdf(link):
+    link = link.replace("https://fnet.bmfbovespa.com.br/fnet/publico/exibirDocumento?id=", bot_url+"/fnet_arq/")
+
     h = {
 
     'Authorization': 'Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiIiLCJhdWQiOiIiLCJpYXQiOjE1MjMzNjQ4MjQsIm5iZiI6MTUyMzM2NDgyNCwianRpIjoicHJvamVjdF9wdWJsaWNfYzkwNWRkMWMwMWU5ZmQ3NzY5ODNjYTQwZDBhOWQyZjNfT1Vzd2EwODA0MGI4ZDJjN2NhM2NjZGE2MGQ2MTBhMmRkY2U3NyJ9.qvHSXgCJgqpC4gd6-paUlDLFmg0o2DsOvb1EUYPYx_E',
@@ -2283,6 +2285,11 @@ def whk():
     except:
         pass
     return jsonify(True), 200
+    
+@app.route('/fnet_arq/<idx>', methods=['GET'])
+def inf2(idx):
+    cabecalhos = {'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8'}
+    return Response(requests.get(f'https://fnet.bmfbovespa.com.br/fnet/publico/exibirDocumento?id={idx}&cvm=true', headers=cabecalhos).text, mimetype="text/html")
 
 #log(f"a", nome=f"b", seg_id=f"c", comando=f"{'/d'.split()[0]}")
     
