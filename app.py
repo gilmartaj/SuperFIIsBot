@@ -662,7 +662,7 @@ def envio_multiplo_telebot(doc, usuarios, caption_):
     if len(usuarios) <= 0:
         return
     
-    try:    
+    try: 
         dx = bot.send_document(
                 usuarios[0],
                 xml_pdf(f'https://fnet.bmfbovespa.com.br/fnet/publico/exibirDocumento?id={doc["id"]}'),
@@ -677,16 +677,17 @@ def envio_multiplo_telebot(doc, usuarios, caption_):
                 visible_file_name="Informe.pdf",
                 caption=caption_
                 )
-        except:
-            try:
+        except Exception as e:
+            raise e
+            """try:
                 pass#bot.send_message("-743953207", f"ERRO: {u}")
             except:
                 print(f"ERRO: {u}")
-            return
+            return"""
     if len(usuarios) > 1:        
         envio_multiplo(doc, dx.document.file_id, usuarios[1:], caption_)
         
-def envio_multiplo_telebot(doc, usuarios, caption_):
+"""def envio_multiplo_telebot(doc, usuarios, caption_):
     caption_ = caption_.replace("\n@SuperFIIsBot","").replace("\n@RepositorioDeFIIs","")
     if len(usuarios) <= 0:
         return
@@ -709,7 +710,7 @@ def envio_multiplo_telebot(doc, usuarios, caption_):
                 print(f"ERRO: {u}")
             return
     if len(usuarios) > 1:        
-        envio_multiplo_telebot(doc, usuarios[1:], caption_)
+        envio_multiplo_telebot(doc, usuarios[1:], caption_)"""
         
 def envio_multiplo_telethon(doc, usuarios):
     if len(usuarios) <= 0:
@@ -2317,9 +2318,9 @@ def inf2(idx):
     return Response(requests.get(f'https://fnet.bmfbovespa.com.br/fnet/publico/exibirDocumento?id={idx}&cvm=true', headers=cabecalhos).text, mimetype="text/html")
 
 #print(xml_pdf(f'https://fnet.bmfbovespa.com.br/fnet/publico/exibirDocumento?id=537478'))
-"""doc_infm = buscar_ultimo_informe_mensal_estruturado(buscar_cnpj("URPR11"))
+doc_infm = buscar_ultimo_informe_mensal_estruturado(buscar_cnpj("URPR11"))
 doc_infm["codigoFII"] = "URPR11"
-env2(doc_infm, ["556068392"])"""
+env2(doc_infm, ["556068392"])
 
 #log(f"a", nome=f"b", seg_id=f"c", comando=f"{'/d'.split()[0]}")
     
