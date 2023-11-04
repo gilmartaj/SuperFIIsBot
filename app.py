@@ -39,7 +39,7 @@ import queue
 
 #import super_fiis_notificador as sfnot
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Response
 
 gspread_credentials = {
   "type": "service_account",
