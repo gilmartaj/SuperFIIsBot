@@ -677,12 +677,12 @@ def envio_multiplo_telebot(doc, usuarios, caption_):
                 visible_file_name="Informe.pdf",
                 caption=caption_
                 )
-        except:
+        except Exception as e:
+            bot.send_message(usuarios[0], f"Erro: {e}")
             try:
                 pass#bot.send_message("-743953207", f"ERRO: {u}")
-            except Exception as e:
+            except:
                 print(f"ERRO: {u}")
-                bot.send_message(usuarios[0], f"Erro: {e}")
             return
     if len(usuarios) > 1:        
         envio_multiplo(doc, dx.document.file_id, usuarios[1:], caption_)
