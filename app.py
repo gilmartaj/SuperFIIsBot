@@ -680,8 +680,9 @@ def envio_multiplo_telebot(doc, usuarios, caption_):
         except:
             try:
                 pass#bot.send_message("-743953207", f"ERRO: {u}")
-            except:
+            except Exception as e:
                 print(f"ERRO: {u}")
+                bot.send_message(usuarios[0], f"Erro: {e}")
             return
     if len(usuarios) > 1:        
         envio_multiplo(doc, dx.document.file_id, usuarios[1:], caption_)
@@ -2290,6 +2291,11 @@ def whk():
 def inf2(idx):
     cabecalhos = {'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8'}
     return Response(requests.get(f'https://fnet.bmfbovespa.com.br/fnet/publico/exibirDocumento?id={idx}&cvm=true', headers=cabecalhos).text, mimetype="text/html")
+
+#print(xml_pdf(f'https://fnet.bmfbovespa.com.br/fnet/publico/exibirDocumento?id=537478'))
+doc_infm = buscar_ultimo_informe_mensal_estruturado(buscar_cnpj("URPR11"))
+doc_infm["codigoFII"] = "URPR11"
+env2(doc_infm, ["556068392"])
 
 #log(f"a", nome=f"b", seg_id=f"c", comando=f"{'/d'.split()[0]}")
     
