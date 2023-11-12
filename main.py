@@ -70,7 +70,7 @@ def request_flask_thread():
             pass
 
 
-gspread_credentials = {
+"""gspread_credentials = {
   "type": "service_account",
   "project_id": os.getenv("gspread_project_id"),
   "private_key_id": os.getenv("gspread_private_key_id"),
@@ -81,12 +81,12 @@ gspread_credentials = {
   "token_uri": "https://oauth2.googleapis.com/token",
   "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
   "client_x509_cert_url": os.getenv("gspread_client_x509_cert_url")
-}
+}"""
 
 #print(gspread_credentials)
 
-#client = gspread.service_account(filename='superfiisbot-9f67df851d9a.json')
-client = gspread.service_account_from_dict(gspread_credentials)
+client = gspread.service_account(filename='superfiisbot-9f67df851d9a.json')
+#client = gspread.service_account_from_dict(gspread_credentials)
 
 sheet = client.open("SeguidoresFIIs").sheet1
 sheet_infra = client.open("SeguidoresFI-Infras").sheet1
@@ -212,7 +212,7 @@ base_infra = BaseCache(sheet_infra)
 
 import multiprocessing
 lock = multiprocessing.Lock()
-log_sheet = gspread.service_account_from_dict(gspread_credentials).open("log").sheet1
+log_sheet = client.open("log").sheet1
 def log(mensagem):
     try:
         lock.acquire(timeout=2)
