@@ -6,6 +6,7 @@ import telebot
 import time
 import urllib
 from threading import Thread
+import threading
 import re
    
 from telethon import TelegramClient
@@ -35,25 +36,15 @@ from multiprocessing.pool import ThreadPool
 
 import queue
 
+import super_fiis_notificador as sfnot
+
 from flask import Flask
-
-telebot.apihelper.SESSION_TIME_TO_LIVE = 60 * 15
-
-bot_aux = os.getenv("BOT_AUX_TOKEN")
-bot_super = os.getenv("BOT_SUPER_TOKEN")
-
-TELETHON_API_ID = os.getenv("TELETHON_API_ID")
-TELETHON_API_HASH = os.getenv("TELETHON_API_HASH")
-
-bot = telebot.TeleBot(bot_aux, threaded=False)
 
 app = Flask(__name__)
 
-bot_url = "https://aaa-2jrx.onrender.com"
-
 @app.route('/')
 def hello():
-    bot.send_message("556068392", "pronto!")
+    bot.send_message("-743953207", "pronto!")
     return "Hello Back4apper!"
 
 @app.route('/kill')
@@ -70,17 +61,16 @@ def request_flask_thread():
          time.sleep(600)
          #bot.send_message("556068392", str(agora()))
          requests.get("https://superfiis1-gilmartaj.b4a.run/")
-         requests.get("https://aaa-2jrx.onrender.com/verificar")
+         #requests.get("https://aaa-2jrx.onrender.com/verificar")
+         requests.get("https://aaa-2jrx.onrender.com")
       except:
          try:
             time.sleep(300)
          except:
             pass
 
-Thread(target=flask_thread).start()
-Thread(target=request_flask_thread).start()
 
-"""gspread_credentials = {
+gspread_credentials = {
   "type": "service_account",
   "project_id": os.getenv("gspread_project_id"),
   "private_key_id": os.getenv("gspread_private_key_id"),
@@ -91,17 +81,27 @@ Thread(target=request_flask_thread).start()
   "token_uri": "https://oauth2.googleapis.com/token",
   "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
   "client_x509_cert_url": os.getenv("gspread_client_x509_cert_url")
-}"""
+}
 
 #print(gspread_credentials)
 
-client = gspread.service_account(filename='superfiisbot-9f67df851d9a.json')
-#client = gspread.service_account_from_dict(gspread_credentials)
+#client = gspread.service_account(filename='superfiisbot-9f67df851d9a.json')
+client = gspread.service_account_from_dict(gspread_credentials)
 
 sheet = client.open("SeguidoresFIIs").sheet1
 sheet_infra = client.open("SeguidoresFI-Infras").sheet1
 
+telebot.apihelper.SESSION_TIME_TO_LIVE = 60 * 15
 
+bot_aux = os.getenv("bot_aux_token")
+bot_super = os.getenv("bot_super_token")
+
+TELETHON_API_ID = os.getenv("telethon_api_id")
+TELETHON_API_HASH = os.getenv("telethon_api_hash")
+
+bot = telebot.TeleBot(bot_super)
+
+bot_url = "https://aaa-2jrx.onrender.com"
 
 fila_doc = queue.Queue()
 
@@ -212,18 +212,18 @@ base_infra = BaseCache(sheet_infra)
 
 import multiprocessing
 lock = multiprocessing.Lock()
-log_sheet = gspread.service_account(filename='superfiisbot-9f67df851d9a.json').open("log").sheet1
+log_sheet = gspread.service_account_from_dict(gspread_credentials).open("log").sheet1
 def log(mensagem):
     try:
         lock.acquire(timeout=2)
     except:
         return
     try:
-        log_sheet.append_row([str(agora()), mensagem])
+        #log_sheet.append_row([str(agora()), mensagem])
         with open("log.txt", "a") as log:
             log.write(f"[{agora()}] {mensagem}\n")
     except:
-        traceback.print_exc()
+        pass
     try:
         lock.release()
     except:
@@ -366,6 +366,23 @@ def buscar_ultimo_provento_infra(fundo):
         prov[isin]["codigo"] = get_nome_pelo_isin(prov[isin]["codigo"], isin)
     return list(map(lambda x: x[1], list(sorted(prov.items(), key=lambda x:x[0]))))
         
+def comparar_proventos_infra(p1, p2):
+    if not p2:
+        return True
+    if not p1:
+        return False
+    if len(p1) != len(p2):
+        return False
+    for i in range(len(p1)):
+        if p1[i]["valor"] != p2[i]["valor"] or p1[i]["competencia"] != p2[i]["competencia"] or p1[i]["dataBase"] != p2[i]["dataBase"] or p1[i]["dataPagamento"] != p2[i]["dataPagamento"]:
+            return False
+        try:
+            if datetime.datetime.strptime(p2, '%d/%m/%Y') < datetime.datetime.strptime(p1, '%d/%m/%Y'):
+                return True
+        except:
+            pass
+    return True
+    
 def informar_provento_infra1(info, seguidores):
     mensagem = "Informação de distribuição:"
     mensagem += f'\n\n\U0001F3D7Código: {info["codigo"]}'
@@ -530,7 +547,7 @@ def conv_monet(valor):
     
 def buscar_documentos(cnpj, desde=""):
     #cnpj 11179118000145
-    r = requests.get(f"https://fnet.bmfbovespa.com.br/fnet/publico/pesquisarGerenciadorDocumentosDados?d=1&s=0&l=10&o%5B0%5D%5BdataEntrega%5D=desc&cnpjFundo={cnpj}")
+    r = requests.get(f"https://fnet.bmfbovespa.com.br/fnet/publico/pesquisarGerenciadorDocumentosDados?d=1&s=0&l=10&o%5B0%5D%5BdataEntrega%5D=desc&cnpjFundo={cnpj}", timeout=30)
     lista = []
     for d in r.json()["data"]:
         de = d["dataEntrega"]
@@ -714,9 +731,9 @@ def envio_multiplo_telebot(doc, usuarios, caption_):
                 )
         except:
             try:
-                bot.send_message("-743953207", f"ERRO: {u}")
+                bot.send_message("-743953207", f"ERRO: {usuarios[0]}")
             except:
-                print(f"ERRO: {u}")
+                print(f"ERRO: {usuarios[0]}")
             return
     if len(usuarios) > 1:        
         envio_multiplo(doc, dx.document.file_id, usuarios[1:], caption_)
@@ -831,6 +848,9 @@ def buscar_cnpj(codigo_fii):
 
 
 def xml_pdf(link):
+
+    link = link.replace("https://fnet.bmfbovespa.com.br/fnet/publico/exibirDocumento?id=", bot_url+"/fnet_arq/")
+
     h = {
 
     'Authorization': 'Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiIiLCJhdWQiOiIiLCJpYXQiOjE1MjMzNjQ4MjQsIm5iZiI6MTUyMzM2NDgyNCwianRpIjoicHJvamVjdF9wdWJsaWNfYzkwNWRkMWMwMWU5ZmQ3NzY5ODNjYTQwZDBhOWQyZjNfT1Vzd2EwODA0MGI4ZDJjN2NhM2NjZGE2MGQ2MTBhMmRkY2U3NyJ9.qvHSXgCJgqpC4gd6-paUlDLFmg0o2DsOvb1EUYPYx_E',
@@ -1022,13 +1042,11 @@ def handle_command(message):
             bot.send_message(message.chat.id, f"Não encontramos em nossa base de dados o fundo {ticker}.", reply_to_message_id=message.id)
             return
         enviada = bot.send_message(message.chat.id, f"Buscando...")
-        #doc_relat = buscar_ultimo_relatorio_gerencial(buscar_cnpj(ticker))
-        req = requests.get(f"https://aaa-2jrx.onrender.com/tgbotcmd/relat/{ticker}/{message.from_user.id}")
-        #if doc_relat:
-        #    doc_relat["codigoFII"] = ticker
-        #    env2(doc_relat, [message.from_user.id])
-        #else:
-        if req.text == "Nenhum relatório encontrado para este fundo.":
+        doc_relat = buscar_ultimo_relatorio_gerencial(buscar_cnpj(ticker))
+        if doc_relat:
+            doc_relat["codigoFII"] = ticker
+            env2(doc_relat, [message.from_user.id])
+        else:
             bot.send_message(message.chat.id, f'Não encontramos informações sobre relatórios gerenciais deste fundo.', reply_to_message_id=message.id)    
         bot.delete_message(message.chat.id, enviada.id)
     elif len(message.text.strip().split()) == 1:
@@ -1567,47 +1585,79 @@ def thread_envio(doc, seguidores):
     except:
         traceback.print_exc()
 
+vlock = threading.Lock()
+
 def verificar():
+    global sheet
+    global base
+    global vlock
     global fila_doc
-    print("Verificando...")
-    for f in base.colunas():
-        seguidores = base.buscar_seguidores(f)
-        if len(seguidores) > 0:
-            #print(f, len(seguidores))
-            h = ultima_busca[f]
-            #ultima_busca[f] = agora()
-            documentos = []
-            try:
-                documentos = buscar_documentos(buscar_cnpj(f), h)
-                for doc in documentos:
-                    if doc not in fila_doc.queue:
-                        fila_doc.put(doc)
-                #print(len(documentos))
-            except:
-                pass
-            #if len(documentos) == 0:
-             #   for seg in seguidores:
-             #       seg = int(seg)
-                    #bot.send_message(seg, f + " - Nenhum documento")
-            #with concurrent.futures.ThreadPoolExecutor(max_workers = 5) as executor:
-            #with ThreadPool(processes = 5) as executor:
-            while not fila_doc.empty():
+    try:
+        bot.send_message("-1001527968438", "Verificando...")
+    except:
+        pass
+    """try:
+        vlocked = vlock.acquire(timeout=2)
+        if not vlocked:
+            return
+    except:
+        return"""
+    with vlock:
+        try:
+            sheet_aux = client.open("SeguidoresFIIs").sheet1
+            base_aux = BaseCache(sheet)
+            if base_aux:
+                base = base_aux
+                time.sleep(30)
+        except:
+            pass
+        print("Verificando...")
+        for f in base.colunas():
+            print(f)
+            seguidores = base.buscar_seguidores(f)
+            if len(seguidores) > 0:
+                #print(f, len(seguidores))
+                h = ultima_busca[f]
+                #ultima_busca[f] = agora()
+                documentos = []
                 try:
-                    doc = fila_doc.get(block=False)
-                    print(f, "-", doc["tipoDocumento"])
-                    doc["codigoFII"] = f
-                    thread_envio(doc, seguidores)                
-                    de = doc["dataEntrega"]
-                    ultima_busca[f] = datetime.datetime(year=int(de[6:10]), month=int(de[3:5]), day=int(de[0:2]), hour=int(de[11:13]), minute=int(de[14:16]), tzinfo=tz_info)
+                    documentos = buscar_documentos(buscar_cnpj(f), h)
+                    for doc in documentos:
+                        try:
+                            sfnot.notificar_seguidores_documento_fundo_bot(f, doc)
+                        except:
+                            pass
+                        if doc not in fila_doc.queue:
+                            fila_doc.put(doc)
+                    #print(len(documentos))
                 except:
-                    pass#ultima_busca[f] = agora()
-                    #Thread(target=thread_envio, args=(doc, seguidores), daemon=True).start()
-                    #executor.submit(thread_envio, doc, seguidores)
-                    #try:
-                        #executor.apply_async(thread_envio, args=(doc, seguidores))
-                    #except:
-                        #traceback.print_exc()
-                    
+                    traceback.print_exc()
+                #if len(documentos) == 0:
+                 #   for seg in seguidores:
+                 #       seg = int(seg)
+                        #bot.send_message(seg, f + " - Nenhum documento")
+                #with concurrent.futures.ThreadPoolExecutor(max_workers = 5) as executor:
+                #with ThreadPool(processes = 5) as executor:
+                while not fila_doc.empty():
+                    try:
+                        doc = fila_doc.get(block=False)
+                        print(f, "-", doc["tipoDocumento"])
+                        doc["codigoFII"] = f
+                        thread_envio(doc, seguidores)                
+                        de = doc["dataEntrega"]
+                        ultima_busca[f] = datetime.datetime(year=int(de[6:10]), month=int(de[3:5]), day=int(de[0:2]), hour=int(de[11:13]), minute=int(de[14:16]), tzinfo=tz_info)
+                    except:
+                        pass#ultima_busca[f] = agora()
+                        #Thread(target=thread_envio, args=(doc, seguidores), daemon=True).start()
+                        #executor.submit(thread_envio, doc, seguidores)
+                        #try:
+                            #executor.apply_async(thread_envio, args=(doc, seguidores))
+                        #except:
+                            #traceback.print_exc()
+        """try:
+            vlock.release()
+        except:
+            pass"""               
 def verificar2():
     for f in base.colunas():
         seguidores = base.buscar_seguidores(f)
@@ -1658,9 +1708,10 @@ def verificacao_periodica():
 
     while True:
         try:
-            print("init")
+            print(f"init {agora()}")
             #bot.send_message("-743953207", str(agora()))
-            Thread(target=verificar, daemon=True).start()
+            Thread(target=verificar, daemon=False).start()
+            #verificar()
             h = agora()
             if is_dia_util(h.date()) and h.hour > 7 and h.hour < 22:
                 time.sleep(600)
@@ -1668,6 +1719,7 @@ def verificacao_periodica():
                 time.sleep(3600)
                 print("Verificando...")
         except:
+            time.sleep(10)
             pass
           
         
@@ -1697,11 +1749,11 @@ def is_dia_util(data):
     
 def thread_fechamento():
     h = agora()
-    parada = datetime.datetime(h.year, h.month, h.day, 19, 45, tzinfo=h.tzinfo)
-    if h.hour >= 19:
-        parada += datetime.timedelta(days=1)
+    #parada = datetime.datetime(h.year, h.month, h.day, 20, 0, tzinfo=h.tzinfo)
+    #if h.hour >= 20:
+    #    parada += datetime.timedelta(days=1)
         
-    #parada = agora() + datetime.timedelta(seconds=10)
+    parada = agora() + datetime.timedelta(seconds=10)
     #print("Esperando")
     
     while True:
@@ -1739,13 +1791,24 @@ tz_info = agora().tzinfo
       
 ultima_busca = {}
 for f in base.colunas():
-    ultima_busca[f] = agora() - datetime.timedelta(minutes=30)
+    ultima_busca[f] = agora() - datetime.timedelta(minutes=90)
     
 ultima_busca_infra = {}
 for f in base_infra.colunas():
-    ultima_busca_infra[f] = agora() - datetime.timedelta(minutes=30)
+    ultima_busca_infra[f] = agora() - datetime.timedelta(minutes=20)
     
 def verificar_infra():
+    global sheet_infra
+    global base_infra
+    try:
+        bot.send_message("-1001527968438", "Verificando Infra...")
+    except:
+        pass
+    try:
+        sheet_infra = client.open("SeguidoresFI-Infras").sheet1
+        base_infra = BaseCache(sheet_infra)
+    except:
+        pass
     #print("Verificando...")
     for f in base_infra.colunas():
         seguidores = base_infra.buscar_seguidores(f)
@@ -1773,7 +1836,8 @@ def verificar_infra():
                 #nova_data = datetime.datetime.strptime(list(prov.values())[0], "%d/%m/%Y") if prov != None else datetime.datetime.min
                 #ultima_data = datetime.datetime.strptime(list(ultimo_provento_infra[f].values())[0], "%d/%m/%Y") if ultimo_provento_infra[f] != None else datetime.datetime.min
                 #if prov != ultimo_provento_infra[f] and nova_data >= ultima_data:
-                if prov != ultimo_provento_infra[f]:
+                #if prov != ultimo_provento_infra[f]:
+                if not comparar_proventos_infra(ultimo_provento_infra[f], prov):
                     print(log(f"Provento encontrado: {f}"))
                     informar_provento_infra1(prov, seguidores)
                     ultimo_provento_infra[f] = prov
@@ -1783,6 +1847,19 @@ def verificar_infra():
                     
 
 def verificacao_periodica_infra():
+
+    for f in base_infra.colunas():
+        try:
+            print(f"Atualizando rendimento {f}...")
+            ultimo_provento_infra[f] = buscar_ultimo_provento_infra(f)
+        except:
+            try:
+                time.sleep(5)
+                ultimo_provento_infra[f] = buscar_ultimo_provento_infra(f)
+            except:
+                traceback.print_exc()
+        time.sleep(2)
+
     time.sleep(600)
 
     while True:
@@ -1806,12 +1883,14 @@ tokens_infra = {
     "IFRA11": "eyJpZGVudGlmaWVyRnVuZCI6IklGUkEiLCJ0eXBlIjoxLCJwYWdlTnVtYmVyIjoxLCJwYWdlU2l6ZSI6MjB9",
     "JURO11": "eyJpZGVudGlmaWVyRnVuZCI6IkpVUk8iLCJ0eXBlIjoxLCJwYWdlTnVtYmVyIjoxLCJwYWdlU2l6ZSI6MjB9",
     "KDIF11": "eyJpZGVudGlmaWVyRnVuZCI6IktESUYiLCJ0eXBlIjoxLCJwYWdlTnVtYmVyIjoxLCJwYWdlU2l6ZSI6MjB9",
+    "NUIF11": "eyJ0eXBlRnVuZCI6MjcsImNucGoiOiI0MDk2MzQwMzAwMDE1MCIsImlkZW50aWZpZXJGdW5kIjoiTlVJRiJ9",
     "OGIN11": "eyJpZGVudGlmaWVyRnVuZCI6Ik9HSU4iLCJ0eXBlIjoxLCJwYWdlTnVtYmVyIjoxLCJwYWdlU2l6ZSI6MjB9",
     "RBIF11": "eyJpZGVudGlmaWVyRnVuZCI6IlJCSUYiLCJ0eXBlIjoxLCJwYWdlTnVtYmVyIjoxLCJwYWdlU2l6ZSI6MjB9",
     "SNID11": "eyJpZGVudGlmaWVyRnVuZCI6IlNOSUQiLCJ0eXBlIjoxLCJwYWdlTnVtYmVyIjoxLCJwYWdlU2l6ZSI6MjB9",
     "XPID11": "eyJpZGVudGlmaWVyRnVuZCI6IlhQSUQiLCJ0eXBlIjoxLCJwYWdlTnVtYmVyIjoxLCJwYWdlU2l6ZSI6MjB9",
     #FIPS
     "AATH11": "eyJpZGVudGlmaWVyRnVuZCI6IkFBVEgiLCJ0eXBlIjoxLCJwYWdlTnVtYmVyIjoxLCJwYWdlU2l6ZSI6MjB9",
+    "AZIN11": "eyJpZGVudGlmaWVyRnVuZCI6IkFaSU4iLCJ0eXBlIjoxLCJwYWdlTnVtYmVyIjoxLCJwYWdlU2l6ZSI6MjB9",
     "BRZP11": "eyJpZGVudGlmaWVyRnVuZCI6IkJSWlAiLCJ0eXBlIjoxLCJwYWdlTnVtYmVyIjoxLCJwYWdlU2l6ZSI6MjB9",
     "BDIV11": "eyJpZGVudGlmaWVyRnVuZCI6IkJESVYiLCJ0eXBlIjoxLCJwYWdlTnVtYmVyIjoxLCJwYWdlU2l6ZSI6MjB9",
     "ENDD11": "eyJpZGVudGlmaWVyRnVuZCI6IkVOREQiLCJ0eXBlIjoxLCJwYWdlTnVtYmVyIjoxLCJwYWdlU2l6ZSI6MjB9",
@@ -1829,20 +1908,10 @@ tokens_infra = {
     "VIGT11": "eyJpZGVudGlmaWVyRnVuZCI6IlZJR1QiLCJ0eXBlIjoxLCJwYWdlTnVtYmVyIjoxLCJwYWdlU2l6ZSI6MjB9",
     "XPIE11": "eyJpZGVudGlmaWVyRnVuZCI6IlhQSUUiLCJ0eXBlIjoxLCJwYWdlTnVtYmVyIjoxLCJwYWdlU2l6ZSI6MjB9",
 }
-"""
+
 ultimo_provento_infra = {}
-for f in base_infra.colunas():
-    try:
-        print(f"Atualizando rendimento {f}...")
-        ultimo_provento_infra[f] = buscar_ultimo_provento_infra(f)
-    except:
-        try:
-            time.sleep(5)
-            ultimo_provento_infra[f] = buscar_ultimo_provento_infra(f)
-        except:
-            traceback.print_exc()
-    time.sleep(2)
-"""       
+
+       
 print("Robô iniciado.")
 #print(fiis_cnpj)
 
@@ -2209,14 +2278,42 @@ def informar_atualizacao_patrimonial_infra(fundo, usuarios):
     for u in usuarios:
         bot.send_message(u, mensagem)
 
-#Thread(target=thread_teste).start()
-#Thread(target=verificacao_periodica, daemon=False).start()
-#Thread(target=verificacao_periodica_infra, daemon=True).start()
-#Thread(target=thread_fechamento, daemon=True).start()
-#Thread(target=informar_fechamento2, daemon=True).start()
-bot.set_my_commands([telebot.types.BotCommand(comando[0], comando[1]) for comando in comandos])
+async def env_msg_telethon():
+    await client.send_message(int("5747986812"), "ativar")
 
-bot.infinity_polling(timeout=200, long_polling_timeout = 60)
+def ativar_render():
+    while True:
+        try:
+            time.sleep(900)
+            requests.get("https://aaa-2jrx.onrender.com")
+            """loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            with TelegramClient("x", TELETHON_API_ID, TELETHON_API_HASH).start() as client:
+                loop.run_until_complete(asyncio.wait([env_msg_telethon()]))"""
+        except:
+            traceback.print_exc()
+
+#Thread(target=thread_teste).start()
+Thread(target=verificacao_periodica, daemon=False).start()
+Thread(target=verificacao_periodica_infra, daemon=False).start()
+Thread(target=thread_fechamento, daemon=True).start()
+Thread(target=request_flask_thread).start()
+Thread(target=flask_thread).start()
+#Thread(target=ativar_render, daemon=True).start()
+#Thread(target=informar_fechamento2, daemon=True).start()
+#bot.set_my_commands([telebot.types.BotCommand(comando[0], comando[1]) for comando in comandos])
+#informar_provento_infra("BDIF11", "1.35", "16/10/2023", "23/10/2023")
+#bot.infinity_polling(timeout=200, long_polling_timeout = 5)
+
+"""provx = ultimo_provento_infra["CDII11"]
+provy = buscar_ultimo_provento_infra("CDII11")
+provy[0]['codigo'] = 'CDII12'
+print("\n ------- \n")
+print(provx)
+print("\n ------- \n")
+print(provy)
+print("\n ------- \n")
+print(comparar_proventos_infra(provx, provy))"""
 
 #docs = buscar_documentos_infra(tokens_infra["JURO11"], agora()-datetime.timedelta(days=10))
 #print(len(docs))
