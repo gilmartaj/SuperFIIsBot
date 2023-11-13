@@ -69,6 +69,7 @@ def request_flask_thread():
          except:
             pass
 
+Thread(target=flask_thread).start()
 
 """gspread_credentials = {
   "type": "service_account",
@@ -2298,7 +2299,6 @@ Thread(target=verificacao_periodica, daemon=False).start()
 Thread(target=verificacao_periodica_infra, daemon=False).start()
 Thread(target=thread_fechamento, daemon=True).start()
 Thread(target=request_flask_thread).start()
-Thread(target=flask_thread).start()
 #Thread(target=ativar_render, daemon=True).start()
 #Thread(target=informar_fechamento2, daemon=True).start()
 #bot.set_my_commands([telebot.types.BotCommand(comando[0], comando[1]) for comando in comandos])
