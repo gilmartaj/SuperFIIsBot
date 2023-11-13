@@ -44,7 +44,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def hello():
-    bot.send_message("-743953207", "pronto!")
+    #bot.send_message("-743953207", "pronto!")
     return "Hello Back4apper!"
 
 @app.route('/kill')
