@@ -11,4 +11,4 @@ COPY . .
 
 CMD ["python3", "main.py"]
 
-EXPOSE 80
+EXPOSE 8080
