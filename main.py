@@ -93,12 +93,18 @@ sheet = client.open("SeguidoresFIIs").sheet1
 sheet_infra = client.open("SeguidoresFI-Infras").sheet1
 
 telebot.apihelper.SESSION_TIME_TO_LIVE = 60 * 15
-
+"""
 bot_aux = os.getenv("bot_aux_token")
 bot_super = os.getenv("bot_super_token")
 
 TELETHON_API_ID = os.getenv("telethon_api_id")
 TELETHON_API_HASH = os.getenv("telethon_api_hash")
+"""
+bot_aux = os.getenv("BOT_AUX_TOKEN")
+bot_super = os.getenv("BOT_SUPER_TOKEN")
+
+TELETHON_API_ID = os.getenv("TELETHON_API_ID")
+TELETHON_API_HASH = os.getenv("TELETHON_API_HASH")
 
 bot = telebot.TeleBot(bot_super)
 
