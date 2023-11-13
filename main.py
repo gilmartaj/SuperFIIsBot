@@ -69,7 +69,7 @@ def request_flask_thread():
          except:
             pass
 
-Thread(target=flask_thread).start()
+#Thread(target=flask_thread).start()
 
 """gspread_credentials = {
   "type": "service_account",
@@ -2304,7 +2304,7 @@ Thread(target=request_flask_thread).start()
 #bot.set_my_commands([telebot.types.BotCommand(comando[0], comando[1]) for comando in comandos])
 #informar_provento_infra("BDIF11", "1.35", "16/10/2023", "23/10/2023")
 #bot.infinity_polling(timeout=200, long_polling_timeout = 5)
-
+app.run(host='0.0.0.0', port=8080)
 """provx = ultimo_provento_infra["CDII11"]
 provy = buscar_ultimo_provento_infra("CDII11")
 provy[0]['codigo'] = 'CDII12'
