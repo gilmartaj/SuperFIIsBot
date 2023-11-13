@@ -2214,9 +2214,9 @@ def informar_atualizacao_patrimonial_infra(fundo, usuarios):
 #Thread(target=verificacao_periodica_infra, daemon=True).start()
 #Thread(target=thread_fechamento, daemon=True).start()
 #Thread(target=informar_fechamento2, daemon=True).start()
-bot.set_my_commands([telebot.types.BotCommand(comando[0], comando[1]) for comando in comandos])
+#bot.set_my_commands([telebot.types.BotCommand(comando[0], comando[1]) for comando in comandos])
 
-bot.infinity_polling(timeout=200, long_polling_timeout = 60)
+#bot.infinity_polling(timeout=200, long_polling_timeout = 60)
 
 #docs = buscar_documentos_infra(tokens_infra["JURO11"], agora()-datetime.timedelta(days=10))
 #print(len(docs))
