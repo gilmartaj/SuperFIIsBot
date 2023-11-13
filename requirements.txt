@@ -15,4 +15,5 @@ Telethon==1.24.0
 telethon-tgcrypto==0.0.3
 xmltodict==0.13.0
 Flask==2.1.1
+Gunicorn
 firebase-admin==5.4.0
