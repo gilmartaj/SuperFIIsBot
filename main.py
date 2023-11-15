@@ -1756,11 +1756,11 @@ def is_dia_util(data):
     
 def thread_fechamento():
     h = agora()
-    #parada = datetime.datetime(h.year, h.month, h.day, 20, 0, tzinfo=h.tzinfo)
-    #if h.hour >= 20:
-    #    parada += datetime.timedelta(days=1)
+    parada = datetime.datetime(h.year, h.month, h.day, 20, 0, tzinfo=h.tzinfo)
+    if h.hour >= 20:
+        parada += datetime.timedelta(days=1)
         
-    parada = agora() + datetime.timedelta(seconds=10)
+    #parada = agora() + datetime.timedelta(seconds=10)
     #print("Esperando")
     
     while True:
