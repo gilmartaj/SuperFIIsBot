@@ -79,15 +79,15 @@ fila_doc = queue.Queue()
 comandos = [
     ("start", "Iniciar"),
     ("ajuda", "Exibe a mensagem de ajuda."),
-    ("cnpj", 'Exibe o CNPJ de um FII. Ex.: "/cnpj URPR11".'),
+    ("cnpj", 'Exibe o CNPJ de um FII.\nEx.: /cnpj URPR11'),
     ("contato", "Exibe informações para contato."),
-    ("cotacao", 'Mostra a cotação de um fundo. Ex.: "/cotacao URPR11"'),
+    ("cotacao", 'Mostra a cotação de um fundo.\nEx.: /cotacao URPR11'),
     #("docs", 'Receba os documentos emitidos pelo fundo nos últimos 30 dias. Ex.: "/docs URPR11"'),
-    ("desinscrever", 'Use para deixar de seguir um FII que você segue. Ex.: "/desinscrever URPR11"'),
+    ("desinscrever", 'Use para deixar de seguir um FII que você segue.\nEx.: /desinscrever URPR11'),
     ("doacao", "Ajude a manter o projeto vivo doando a partir de 1 centavo. Chave Pix: gil77891@gmail.com"),
     ("fundos_seguidos", "Lista todos os fundos imobiliários que você segue."),
-    ("rend", 'Informa a última distribuição de proventos do fundo. Ex.: "/rend URPR11"'),
-    ("seguir", 'Use para receber todos os documentos e informações de rendimentos de um FII. Ex.: "/seguir URPR11"'), 
+    ("rend", 'Informa a última distribuição de proventos do fundo.\nEx.: /rend URPR11'),
+    ("seguir", 'Use para receber todos os documentos e informações de rendimentos de um FII.\nEx.: /seguir URPR11'), 
     #("ultimos_documentos", 'Receba os documentos emitidos pelo fundo nos últimos 30 dias. Ex.: "/ultimos_documentos URPR11"'),
     ("mais", "Mais comandos..."),
     ]
@@ -982,6 +982,7 @@ def callback_query(call):
           #markup.add(InlineKeyboardButton("Voltar", callback_data="voltar_"+("seguidos" if seguindo else "todos")))
           markup.add(KeyboardButton("\u21A9\uFE0F Voltar"))"""
           
+          bot.delete_message(call.message.chat.id, call.message.id)
           bot.send_message(call.message.chat.id, fundo+" - Opções disponíveis:", reply_markup=markup)
         
           bot.answer_callback_query(call.id, "")
@@ -1518,6 +1519,9 @@ def handle_command(message):
     print(agora(), message.from_user.first_name, message.text)
     if len(message.text.strip().split()) == 2:
         ticker = message.text.split()[1].strip().upper()
+        if ticker[-1] in ("3","4","5","6"):
+            bot.send_message(message.chat.id, f"Desculpe, mas este bot é só para fundos. Para seguir ações, utilize o @SuperAcoes_Bot.", reply_to_message_id=message.id)
+            return
         r = base.inserir(ticker, str(message.chat.id))
         if r == 0:
             bot.send_message(message.chat.id, f"Parabéns! Agora você receberá todos os documentos e comunicados referentes ao fundo {ticker}.", reply_to_message_id=message.id)
@@ -2656,7 +2660,7 @@ def informar_atualizacao_patrimonial_infra(fundo, usuarios):
 #Thread(target=thread_fechamento, daemon=True).start()
 #Thread(target=informar_fechamento2, daemon=True).start()
 
-
+#bot.set_webhook(url="")
 #bot.infinity_polling(timeout=200, long_polling_timeout = 5)
 
 #docs = buscar_documentos_infra(tokens_infra["JURO11"], agora()-datetime.timedelta(days=10))
