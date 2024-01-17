@@ -883,6 +883,9 @@ def callback_query(call):
         if call.data.endswith("|"):
           bot.answer_callback_query(call.id, "Opção inválida")
           return
+          
+        if call.data == "fechar":
+          bot.delete_message(call.message.chat.id, call.message.id)
         
         if call.data.startswith("cnpj"):
           func_cnpj(call.message.chat.id, call.data.split("|")[1])
@@ -920,10 +923,12 @@ def callback_query(call):
         if call.data.startswith("voltar_seguidos"):
           func_fundos_seguidos(call.message.chat.id)
           bot.answer_callback_query(call.id, "")
+          bot.delete_message(call.message.chat.id, call.message.id)
           return
         if call.data.startswith("voltar_todos"):
           func_todos_fundos(call.message.chat.id)
           bot.answer_callback_query(call.id, "")
+          bot.delete_message(call.message.chat.id, call.message.id)
           return
         
         if call.data.startswith("fundo_selecionado") or mostrar_menu:
@@ -957,11 +962,11 @@ def callback_query(call):
             #markup.add(InlineKeyboardButton("Último inf. trimestral", callback_data="|"))
             markup.add(InlineKeyboardButton("\U0001f4b0 Último provento", callback_data="rend|"+fundo),InlineKeyboardButton(("-" if nao_tem_relatorio(fundo) else "\U0001f4dc Último relatório"), callback_data="relat|"+("" if nao_tem_relatorio(fundo) else fundo)))
           if seguindo:
-            markup.add(InlineKeyboardButton("\u274C Deixar de seguir "+fundo, callback_data="desinscrever|"+fundo))
+            markup.add(InlineKeyboardButton("\u26D4 Deixar de seguir "+fundo, callback_data="desinscrever|"+fundo))
           #markup.add(InlineKeyboardButton("Último relatório", callback_data="|"))
           #markup.add(InlineKeyboardButton("Voltar", callback_data="voltar_"+("seguidos" if seguindo else "todos")))
-          markup.add(InlineKeyboardButton("\u21A9\uFE0F Voltar", callback_data="voltar_seguidos"))
-          
+          markup.add(InlineKeyboardButton("\u21A9\uFE0F Voltar", callback_data="voltar_seguidos"),InlineKeyboardButton("\u274C Fechar", callback_data="fechar"))
+          #markup.add(InlineKeyboardButton("\u274C Fechar menu", callback_data="fechar"))
           
           
           """markup = ReplyKeyboardMarkup()
@@ -982,8 +987,9 @@ def callback_query(call):
           #markup.add(InlineKeyboardButton("Voltar", callback_data="voltar_"+("seguidos" if seguindo else "todos")))
           markup.add(KeyboardButton("\u21A9\uFE0F Voltar"))"""
           
-          bot.delete_message(call.message.chat.id, call.message.id)
+          
           bot.send_message(call.message.chat.id, fundo+" - Opções disponíveis:", reply_markup=markup)
+          bot.delete_message(call.message.chat.id, call.message.id)
         
           bot.answer_callback_query(call.id, "")
 
@@ -1869,6 +1875,9 @@ def func_cotacao(usuario, fundo, message_id=None):
         bot.send_message(usuario, f"R$ {valor:.2f}".replace(".",","), reply_to_message_id=message_id)
     except:
         bot.send_message(usuario, 'Ocorreu um erro, tente novamente.')
+
+def formatar_cnpj(cnpj):
+  return cnpj[0:2] + "." + cnpj[2:5] + "." + cnpj[5:8] + "/" + cnpj[8:12] + "-" + cnpj[12:14]
         
 @bot.message_handler(commands=["cnpj"])
 def handle_command(message):
@@ -1880,10 +1889,10 @@ def handle_command(message):
             if ticker in tokens_infra.keys():#("BODB11", "BDIF11", "CPTI11", "BIDB11", "IFRA11", "KDIF11", "OGIN11", "RBIF11", "CDII11", "JURO11", "SNID11", "XPID11"):
                 cnpj = buscar_cnpj_infra(ticker)
                 #bot.send_message(message.chat.id, f"Desculpe, mas no momento esta função não está disponível para FI-Infras.", reply_to_message_id=message.id)
-                bot.send_message(message.chat.id, cnpj, reply_to_message_id=message.id)
+                bot.send_message(message.chat.id, formatar_cnpj(cnpj), reply_to_message_id=message.id)
                 return
             cnpj = buscar_cnpj(ticker)
-            bot.send_message(message.chat.id, cnpj, reply_to_message_id=message.id)
+            bot.send_message(message.chat.id, formatar_cnpj(cnpj), reply_to_message_id=message.id)
         except:
             bot.send_message(message.chat.id, f"Não encontramos em nossa base de dados o fundo {ticker}.")
     else:
@@ -1895,10 +1904,10 @@ def func_cnpj(usuario, fundo, message_id=None):
             if ticker in tokens_infra.keys():#("BODB11", "BDIF11", "CPTI11", "BIDB11", "IFRA11", "KDIF11", "OGIN11", "RBIF11", "CDII11", "JURO11", "SNID11", "XPID11"):
                 cnpj = buscar_cnpj_infra(ticker)
                 #bot.send_message(message.chat.id, f"Desculpe, mas no momento esta função não está disponível para FI-Infras.", reply_to_message_id=message.id)
-                bot.send_message(usuario, cnpj, reply_to_message_id=message_id)
+                bot.send_message(usuario, formatar_cnpj(cnpj), reply_to_message_id=message_id)
                 return
             cnpj = buscar_cnpj(ticker)
-            bot.send_message(usuario, cnpj, reply_to_message_id=message_id)
+            bot.send_message(usuario, formatar_cnpj(cnpj), reply_to_message_id=message_id)
         except:
             bot.send_message(usuario, f"Não encontramos em nossa base de dados o fundo {ticker}.")
 
