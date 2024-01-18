@@ -15,6 +15,8 @@ from telethon.tl.types import DocumentAttributeVideo, InputMediaUploadedDocument
 
 import os
 
+import gc
+
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
@@ -1725,6 +1727,7 @@ def verificacao_periodica():
             else:
                 time.sleep(3600)
                 print("Verificando...")
+            gc.collect()
         except:
             time.sleep(10)
             pass
@@ -1798,11 +1801,11 @@ tz_info = agora().tzinfo
       
 ultima_busca = {}
 for f in base.colunas():
-    ultima_busca[f] = agora() - datetime.timedelta(minutes=720)
+    ultima_busca[f] = agora() - datetime.timedelta(minutes=30)
     
 ultima_busca_infra = {}
 for f in base_infra.colunas():
-    ultima_busca_infra[f] = agora() - datetime.timedelta(minutes=720)
+    ultima_busca_infra[f] = agora() - datetime.timedelta(minutes=30)
     
 def verificar_infra():
     global sheet_infra
@@ -1878,6 +1881,7 @@ def verificacao_periodica_infra():
             else:
                 time.sleep(10800)
             print("Verificando infra...", agora())
+            gc.collect()
         except:
             pass
    
